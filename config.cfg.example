@@ -1,0 +1,21 @@
+[ServerConfig]
+# Port for the file server to listen on that other nodes can connect to
+listen_port = "8080"
+# Rescan time in seconds, full rescan of the filesystem in x seconds
+rescan = 30
+
+[Database]
+type = "mysql"
+# DSN Takes the following form:
+dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
+
+[listeners]
+	[listeners.MonitorMe1]
+  	directory = "/data/directory/to/monitor"
+	key = "monitorme1_directory"
+	secret = "aslkdfjaslfjka;sljd"
+
+	[listeners.Bootstrapped]
+  	directory = "/data/directory/to/monitorthistoo"
+	key = "monitormethistoo_directory"
+	secret = "oiweurldkfj"
