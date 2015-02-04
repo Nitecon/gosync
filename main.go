@@ -5,12 +5,14 @@
 package main
 
 import (
+	"flag"
 	"gosync/config"
 	"gosync/dbsync"
 	"gosync/firstrun"
 	"gosync/fswatcher"
 	"log"
 	"net/http"
+	"os"
 )
 
 func testDynamo() {
@@ -29,13 +31,22 @@ func StartWebFileServer(cfg *config.Configuration) {
 }
 
 func main() {
-	cfg := config.ReadConfigFromFile("config.cfg")
-	firstrun.InitialSync(cfg)
-	for _, item := range cfg.Listeners {
-		log.Println("Working with: " + item.Directory)
-		go dbsync.DBCheckin(item.Directory, cfg)
-		go fswatcher.SysPathWatcher(item.Directory)
+	var configFile string
+	flag.StringVar(&configFile, "config", "/etc/gosync/config.cfg", "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
+	flag.Parse()
+	if _, err := os.Stat(configFile); err == nil {
+		log.Printf("Using %s as config file", configFile)
+		cfg := config.ReadConfigFromFile(configFile)
+		firstrun.InitialSync(cfg)
+		for _, item := range cfg.Listeners {
+			log.Println("Working with: " + item.Directory)
+			go dbsync.DBCheckin(item.Directory, cfg)
+			go fswatcher.SysPathWatcher(item.Directory)
+		}
+		StartWebFileServer(cfg)
+	} else {
+		log.Fatalf("Config file specified does not exist (%s)", configFile)
+
 	}
-	StartWebFileServer(cfg)
 
 }
