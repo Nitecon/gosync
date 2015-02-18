@@ -12,6 +12,7 @@ import (
 
 type FsItem struct {
 	Filename string
+	Path     string
 	Checksum string
 	IsDir    bool
 	Mtime    int
@@ -20,16 +21,16 @@ type FsItem struct {
 	Perms    string
 }
 
-func ListFilesInDir(path string) []FsItem {
-	searchDir := path
+func ListFilesInDir(doc_path string) []FsItem {
+	searchDir := doc_path
 
 	fsItems := []FsItem{}
-	err := filepath.Walk(searchDir, func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(searchDir, func(doc_path string, info os.FileInfo, err error) error {
 		//add to slice here
 		fsItems = append(fsItems, FsItem{
-			Filename: path,
+			Filename: doc_path,
 			IsDir:    info.IsDir(),
-			Checksum: GetMd5Checksum(path),
+			Checksum: GetMd5Checksum(doc_path),
 			Mtime:    int(info.ModTime().Unix()),
 			Uid:      int(info.Sys().(*syscall.Stat_t).Uid),
 			Gid:      int(info.Sys().(*syscall.Stat_t).Gid),

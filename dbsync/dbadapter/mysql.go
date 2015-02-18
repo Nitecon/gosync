@@ -7,39 +7,33 @@ import (
 	"gosync/config"
 	"gosync/fstools"
 	"log"
+	"net/url"
 	"os"
+	"path"
 	"time"
 )
 
 func createTableQuery(table string) string {
-	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
-	id int(10) unsigned NOT NULL,
+	var createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
+	id int(10) unsigned NOT NULL AUTO_INCREMENT,
   path text COLLATE utf8_unicode_ci NOT NULL,
+  is_dir int NOT NULL,
   filename varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  directory varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   checksum varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  atime timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  mtime timestamp NOT NULL DEFAULT '0000-00-00 00:00:00',
+  atime int(10) NOT NULL,
+  mtime int(10) NOT NULL,
   uid int(5) NOT NULL,
   gid int(5) NOT NULL,
-  perms int(4) NOT NULL,
+  perms varchar(12) COLLATE utf8_unicode_ci NOT NULL,
   host_updated varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  last_update timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  last_update int(10) NOT NULL,
+  PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+	
 `, table)
-}
 
-type FsTable struct {
-	Id         int    `id`
-	Path       string `path`
-	IsDir      int    `is_dir`
-	Filename   string `filename`
-	Checksum   string `checksum`
-	Mtime      int    `mtime`
-	Uid        int    `uid`
-	Gid        int    `gid`
-	Perms      string `perms`
-	HostName   string `host_updated`
-	LastUpdate int    `last_update`
+	return createStmt
 }
 
 func MySQLSetupTables(cfg *config.Configuration) {
@@ -69,27 +63,28 @@ func MySQLInsertItem(cfg *config.Configuration, table string, item fstools.FsIte
 	}
 
 	hostname, _ := os.Hostname()
-	row := &FsTable{
-		Path:       item.Filename,
-		IsDir:      isDirectory,
-		Filename:   item.Filename,
-		Checksum:   item.Checksum,
-		Mtime:      item.Mtime,
-		Uid:        item.Uid,
-		Gid:        item.Gid,
-		Perms:      item.Perms,
-		HostName:   hostname,
-		LastUpdate: int(time.Now().Unix()),
+	query := fmt.Sprintf("INSERT INTO %s (path, is_dir, filename, directory, checksum, atime, mtime, uid, gid, perms, host_updated, last_update) VALUES (\"%s\", %d, \"%s\", \"%s\", \"%s\",%d, %d, %d, %d, \"%s\", \"%s\", %d )",
+		table,
+		url.QueryEscape(item.Filename),
+		isDirectory,
+		url.QueryEscape(path.Base(item.Filename)),
+		url.QueryEscape(path.Dir(item.Filename)),
+		item.Checksum,
+		time.Now().Unix(),
+		item.Mtime,
+		item.Uid,
+		item.Gid,
+		item.Perms,
+		hostname,
+		time.Now().Unix())
+	log.Printf("Executing Query: %s", query)
+	_, err := db.Exec(query)
+	if err != nil {
+		log.Fatalf("Critical error, cannot insert into table %s : %v", table, err.Error())
+		return false
+	} else {
+		return true
 	}
-	/*
-		err := dbmap.Insert(row)
-		if err != nil {
-			checkErr(err, "Error occurred adding item to table: "+table)
-			return false
-		} else {
-			return true
-		}*/
-	log.Printf("Stub in for adding data %v", row)
 	return true
 }
 
