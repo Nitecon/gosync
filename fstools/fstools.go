@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 )
 
 type FsItem struct {
@@ -15,7 +16,7 @@ type FsItem struct {
 	Path     string
 	Checksum string
 	IsDir    bool
-	Mtime    int
+	Mtime    time.Time
 	Uid      int
 	Gid      int
 	Perms    string
@@ -31,7 +32,7 @@ func ListFilesInDir(doc_path string) []FsItem {
 			Filename: doc_path,
 			IsDir:    info.IsDir(),
 			Checksum: GetMd5Checksum(doc_path),
-			Mtime:    int(info.ModTime().Unix()),
+			Mtime:    info.ModTime().UTC(),
 			Uid:      int(info.Sys().(*syscall.Stat_t).Uid),
 			Gid:      int(info.Sys().(*syscall.Stat_t).Gid),
 			Perms:    info.Mode().Perm().String(),

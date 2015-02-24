@@ -1,13 +1,16 @@
 package dbadapter
 
 import (
-	"database/sql"
+	//_ "github.com/lib/pq"
+	//"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 	"gosync/config"
 	"gosync/fstools"
+	"gosync/prototypes"
 	"log"
-	"net/url"
+	//"net/url"
 	"os"
 	"path"
 	"time"
@@ -21,13 +24,13 @@ func createTableQuery(table string) string {
   filename varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   directory varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   checksum varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  atime int(10) NOT NULL,
-  mtime int(10) NOT NULL,
+  atime timestamp NOT NULL,
+  mtime timestamp NOT NULL,
   uid int(5) NOT NULL,
   gid int(5) NOT NULL,
   perms varchar(12) COLLATE utf8_unicode_ci NOT NULL,
   host_updated varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  last_update int(10) NOT NULL,
+  last_update timestamp default now() NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 	
@@ -37,23 +40,19 @@ func createTableQuery(table string) string {
 }
 
 func MySQLSetupTables(cfg *config.Configuration) {
-	var db *sql.DB
+	var db *sqlx.DB
 	db = initDb(cfg)
 	defer db.Close()
 	log.Println("Database initialized")
 
 	for key, _ := range cfg.Listeners {
-		_, err := db.Query(createTableQuery(key))
-		if err != nil {
-			panic(err.Error()) // proper error handling instead of panic in your app
-		}
-
+		db.MustExec(createTableQuery(key))
 	}
 
 }
 
 func MySQLInsertItem(cfg *config.Configuration, table string, item fstools.FsItem) bool {
-	var db *sql.DB
+	var db *sqlx.DB
 	db = initDb(cfg)
 	defer db.Close()
 
@@ -61,43 +60,52 @@ func MySQLInsertItem(cfg *config.Configuration, table string, item fstools.FsIte
 	if item.IsDir {
 		isDirectory = 1
 	}
-
 	hostname, _ := os.Hostname()
-	query := fmt.Sprintf("INSERT INTO %s (path, is_dir, filename, directory, checksum, atime, mtime, uid, gid, perms, host_updated, last_update) VALUES (\"%s\", %d, \"%s\", \"%s\", \"%s\",%d, %d, %d, %d, \"%s\", \"%s\", %d )",
-		table,
-		url.QueryEscape(item.Filename),
+	tx := db.MustBegin()
+
+	tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, uid, gid, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+		item.Filename,
 		isDirectory,
-		url.QueryEscape(path.Base(item.Filename)),
-		url.QueryEscape(path.Dir(item.Filename)),
+		path.Base(item.Filename),
+		path.Dir(item.Filename),
 		item.Checksum,
-		time.Now().Unix(),
+		time.Now().UTC(),
 		item.Mtime,
 		item.Uid,
 		item.Gid,
 		item.Perms,
 		hostname,
-		time.Now().Unix())
-	log.Printf("Executing Query: %s", query)
-	_, err := db.Exec(query)
-	if err != nil {
-		log.Fatalf("Critical error, cannot insert into table %s : %v", table, err.Error())
-		return false
-	} else {
-		return true
-	}
+		time.Now().UTC())
+	err := tx.Commit()
+	checkErr(err, "Error inserting data")
+
 	return true
 }
 
+func MySQLFetchAll(cfg *config.Configuration, table string) []prototypes.DataTable {
+	var db *sqlx.DB
+	db = initDb(cfg)
+	defer db.Close()
+
+	dTable := []prototypes.DataTable{}
+	query := "SELECT path, is_dir, checksum, mtime, uid, gid, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
+	//log.Println("Executing scan all items...")
+	err := db.Select(&dTable, query)
+	checkErr(err, "Error occurred getting file details for: "+table)
+	//log.Println("Executing scan all items... COMPLETE")
+	return dTable
+}
+
 func MySQLCheckEmpty(cfg *config.Configuration, table string) bool {
-	var db *sql.DB
+	var db *sqlx.DB
 	db = initDb(cfg)
 	defer db.Close()
 
 	var count int
-	query := fmt.Sprintf("SELECT count(*) FROM %s", table)
-	err := db.QueryRow(query).Scan(&count)
+
+	err := db.Get(&count, "SELECT count(*) FROM "+table+";")
 	if err != nil {
-		log.Fatalf("Critical error, cannot read from table %s : %v", table, err.Error())
+		checkErr(err, "Error counting items in table: "+table)
 	}
 	var isEmpty = true
 	if count > 0 {
@@ -106,11 +114,17 @@ func MySQLCheckEmpty(cfg *config.Configuration, table string) bool {
 	return isEmpty
 }
 
-func initDb(cfg *config.Configuration) *sql.DB {
-	db, err := sql.Open("mysql", cfg.Database.Dsn)
+func initDb(cfg *config.Configuration) *sqlx.DB {
+	/*db, err := sql.Open("mysql", cfg.Database.Dsn)
 	if err != nil {
 		log.Fatalf("Error connecting to database: %v", err.Error())
 	}
+	*/
+	db, err := sqlx.Connect("mysql", cfg.Database.Dsn+"&parseTime=True")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	return db
 }
 
