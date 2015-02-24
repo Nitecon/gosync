@@ -9,13 +9,20 @@ type = "mysql"
 # DSN Takes the following form:
 dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
 
+# The UID and GID for each directory enforces the files in that directory to be owned by that particular user
+# That allows for mismatched UID / GIDs between servers
+
 [listeners]
 	[listeners.MonitorMe1]
+	uid = 504
+  	gid = 504
   	directory = "/data/directory/to/monitor"
 	key = "monitorme1_directory"
 	secret = "aslkdfjaslfjka;sljd"
 
 	[listeners.Bootstrapped]
+	uid = 504
+  	gid = 504
   	directory = "/data/directory/to/monitorthistoo"
 	key = "monitormethistoo_directory"
 	secret = "oiweurldkfj"

@@ -24,6 +24,8 @@ type listener struct {
 	Directory string
 	Key       string
 	Secret    string
+	Uid       int
+	Gid       int
 }
 
 func ReadConfigFromFile(configfile string) *Configuration {
