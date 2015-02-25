@@ -22,6 +22,7 @@ func InitialSync(cfg *config.Configuration) {
 	log.Println("Verifying DB Tables")
 	dbsync.DBInit(cfg)
 	log.Println("Initial sync starting...")
+	config.GetLocalIp()
 	for key, listener := range cfg.Listeners {
 		// First check to see if the table is empty and do a full import false == not empty
 		if dbsync.DBCheckEmpty(cfg, key) == false {

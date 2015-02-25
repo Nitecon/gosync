@@ -4,6 +4,16 @@ listen_port = "8080"
 # Rescan time in seconds, full rescan of the filesystem in x seconds
 rescan = 30
 
+[StorageS3]
+key=""
+secret=""
+region=""
+
+[StorageGDrive]
+key=""
+secret=""
+region=""
+
 [Database]
 type = "mysql"
 # DSN Takes the following form:
@@ -19,6 +29,9 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
   	directory = "/data/directory/to/monitor"
 	key = "monitorme1_directory"
 	secret = "aslkdfjaslfjka;sljd"
+	storagetype="s3"
+	bucket="fssync"
+	basepath="/fssync"
 
 	[listeners.Bootstrapped]
 	uid = 504
@@ -26,3 +39,6 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
   	directory = "/data/directory/to/monitorthistoo"
 	key = "monitormethistoo_directory"
 	secret = "oiweurldkfj"
+	storage="s3"
+	bucket="fssync"
+	basepath="/fssync"

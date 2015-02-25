@@ -26,8 +26,6 @@ func createTableQuery(table string) string {
   checksum varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   atime timestamp NOT NULL,
   mtime timestamp NOT NULL,
-  uid int(5) NOT NULL,
-  gid int(5) NOT NULL,
   perms varchar(12) COLLATE utf8_unicode_ci NOT NULL,
   host_updated varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   last_update timestamp default now() NOT NULL,
@@ -63,7 +61,7 @@ func MySQLInsertItem(cfg *config.Configuration, table string, item fstools.FsIte
 	hostname, _ := os.Hostname()
 	tx := db.MustBegin()
 
-	tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, uid, gid, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+	tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
 		item.Filename,
 		isDirectory,
 		path.Base(item.Filename),
@@ -71,8 +69,6 @@ func MySQLInsertItem(cfg *config.Configuration, table string, item fstools.FsIte
 		item.Checksum,
 		time.Now().UTC(),
 		item.Mtime,
-		item.Uid,
-		item.Gid,
 		item.Perms,
 		hostname,
 		time.Now().UTC())
@@ -88,7 +84,7 @@ func MySQLFetchAll(cfg *config.Configuration, table string) []prototypes.DataTab
 	defer db.Close()
 
 	dTable := []prototypes.DataTable{}
-	query := "SELECT path, is_dir, checksum, mtime, uid, gid, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
+	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
 	//log.Println("Executing scan all items...")
 	err := db.Select(&dTable, query)
 	checkErr(err, "Error occurred getting file details for: "+table)
