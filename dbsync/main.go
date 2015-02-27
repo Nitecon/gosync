@@ -9,14 +9,16 @@ import (
 	"time"
 )
 
-func DBInit(cfg *config.Configuration) {
+func DBInit() {
+    cfg:= config.GetConfig()
 	if cfg.Database.Type == "mysql" {
 		//log.Println("MySQL database in use... checking tables")
 		dbadapter.MySQLSetupTables(cfg)
 	}
 }
 
-func InsertItem(cfg *config.Configuration, table string, item fstools.FsItem) bool {
+func InsertItem(table string, item fstools.FsItem) bool {
+    cfg := config.GetConfig()
 	var updateSuccess = true
 	if cfg.Database.Type == "mysql" {
 		//log.Println("MySQL database adapter selected")
@@ -25,7 +27,8 @@ func InsertItem(cfg *config.Configuration, table string, item fstools.FsItem) bo
 	return updateSuccess
 }
 
-func DBCheckEmpty(cfg *config.Configuration, table string) bool {
+func DBCheckEmpty(table string) bool {
+    cfg := config.GetConfig()
 	var isEmpty = true
 	if cfg.Database.Type == "mysql" {
 		//log.Println("MySQL database adapter selected")
@@ -39,7 +42,8 @@ func DBCheckEmpty(cfg *config.Configuration, table string) bool {
 	return isEmpty
 }
 
-func DBFetchAll(cfg *config.Configuration, table string) []prototypes.DataTable {
+func DBFetchAll(table string) []prototypes.DataTable {
+    cfg := config.GetConfig()
 	if cfg.Database.Type == "mysql" {
 		items := dbadapter.MySQLFetchAll(cfg, table)
 		return items

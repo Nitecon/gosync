@@ -41,6 +41,21 @@ func ListFilesInDir(doc_path string) []FsItem {
 	return fsItems
 }
 
+func GetFileInfo(doc_path string) (FsItem, error){
+    fi, err := os.Stat(doc_path)
+    var item = FsItem{}
+    if err != nil{
+        return item, err
+    }else{
+        item.Filename = doc_path
+        item.IsDir = fi.IsDir()
+        item.Checksum = GetMd5Checksum(doc_path)
+        item.Mtime = fi.ModTime().UTC()
+        item.Perms = fi.Mode().Perm().String()
+    }
+    return item, nil
+}
+
 func GetMd5Checksum(filepath string) string {
 	if b, err := ComputeMd5(filepath); err == nil {
 		md5string := fmt.Sprintf("%x", b)

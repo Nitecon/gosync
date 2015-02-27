@@ -29,7 +29,8 @@ func StartWebFileServer(cfg *config.Configuration) {
 
 func main() {
 	var ConfigFile string
-	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg", "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
+	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg",
+    "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
 	if _, err := os.Stat(ConfigFile); err == nil {
 		log.Printf("Using %s as config file", ConfigFile)

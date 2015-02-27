@@ -3,6 +3,10 @@ package fswatcher
 import (
 	"gopkg.in/fsnotify.v1"
 	"log"
+    //"gosync/storage"
+    "gosync/dbsync"
+    "gosync/fstools"
+    "gosync/config"
 )
 
 func SysPathWatcher(path string) {
@@ -20,18 +24,43 @@ func SysPathWatcher(path string) {
 				//log.Println("event:", event)
 				if event.Op&fsnotify.Chmod == fsnotify.Chmod {
 					log.Println("Chmod occurred on:", event.Name)
+                    fsItem, err := fstools.GetFileInfo(event.Name)
+                    if err != nil{
+                        log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
+                    }
+                    dbsync.InsertItem(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Rename == fsnotify.Rename {
 					log.Println("Rename occurred on:", event.Name)
+                    fsItem, err := fstools.GetFileInfo(event.Name)
+                    if err != nil{
+                        log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
+                    }
+                    dbsync.InsertItem(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					log.Println("New File:", event.Name)
+                    fsItem, err := fstools.GetFileInfo(event.Name)
+                    if err != nil{
+                        log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
+                    }
+                    dbsync.InsertItem(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
+                    fsItem, err := fstools.GetFileInfo(event.Name)
+                    if err != nil{
+                        log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
+                    }
+                    dbsync.InsertItem(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					log.Println("Removed File: ", event.Name)
+                    fsItem, err := fstools.GetFileInfo(event.Name)
+                    if err != nil{
+                        log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
+                    }
+                    dbsync.InsertItem(getListener(path),fsItem)
 				}
 			case err := <-watcher.Errors:
 				log.Println("error:", err)
@@ -44,4 +73,15 @@ func SysPathWatcher(path string) {
 		log.Fatal(err)
 	}
 	<-done
+}
+
+func getListener(dir string) string {
+    var listener = ""
+    cfg := config.GetConfig()
+    for lname, ldata := range cfg.Listeners{
+        if ldata.Directory == dir{
+            listener = lname
+        }
+    }
+    return listener
 }
