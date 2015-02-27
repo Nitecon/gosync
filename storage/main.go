@@ -1,15 +1,15 @@
 package storage
 
 import (
-	"fmt"
 	"gosync/config"
+
+	"strings"
 )
 
 var (
 	// BackupConfig determines which storage system to use,
 	// and we then assign that to "storage".
-	BackupConfig = "GDrive"
-	storage      Backupper
+	storage Backupper
 )
 
 type Backupper interface {
@@ -18,32 +18,45 @@ type Backupper interface {
 	CheckMD5(local_path, remote_path string) bool
 }
 
-func PutFile(local_path, remote_path string, cfg *config.Configuration) error {
-	switch BackupConfig {
-	case "GDrive":
+func setStorageEngine(listener string) {
+	cfg := config.GetConfig()
+	var engine = cfg.Listeners[listener].StorageType
+	switch engine {
+	case "gdrive":
 		storage = &GDrive{}
-	case "S3":
+	case "s3":
 		storage = &S3{}
 	}
-	return storage.Upload(local_path, remote_path, cfg*config.Configuration)
 }
 
-func GetFile(local_path, remote_path string) error {
-	switch BackupConfig {
-	case "GDrive":
-		storage = &GDrive{}
-	case "S3":
-		storage = &S3{}
-	}
-	return storage.Download(remote_path, local_path)
+func getRemoteBasePath(listener string) string {
+	cfg := config.GetConfig()
+	return cfg.Listeners[listener].BasePath
 }
 
-func CheckFileMD5(local_path, remote_path string, cfg *config.Configuration) bool {
-	switch BackupConfig {
-	case "GDrive":
-		storage = &GDrive{}
-	case "S3":
-		storage = &S3{}
-	}
-	return storage.CheckMD5(local_path, remote_path)
+func getBaseDir(listener string) string {
+	cfg := config.GetConfig()
+	return cfg.Listeners[listener].Directory
+}
+
+func getRemotePath(listener, local_path string) string {
+	lPath := strings.TrimPrefix(local_path, getBaseDir(listener))
+	return getRemoteBasePath(listener) + lPath
+}
+
+func PutFile(local_path, listener string) error {
+	setStorageEngine(listener)
+
+	return storage.Upload(local_path, getRemotePath(listener, local_path))
+}
+
+func GetFile(local_path, listener string) error {
+	setStorageEngine(listener)
+
+	return storage.Download(getRemotePath(listener, local_path), local_path)
+}
+
+func CheckFileMD5(local_path, listener string) bool {
+	setStorageEngine(listener)
+	return storage.CheckMD5(local_path, getRemotePath(listener, local_path))
 }

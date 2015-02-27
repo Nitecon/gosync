@@ -15,9 +15,6 @@ import (
 	"os"
 )
 
-func testDynamo() {
-	log.Println("Checking everything")
-}
 
 func StartWebFileServer(cfg *config.Configuration) {
 	log.Println("Starting web listener")
@@ -31,13 +28,14 @@ func StartWebFileServer(cfg *config.Configuration) {
 }
 
 func main() {
-	var configFile string
-	flag.StringVar(&configFile, "config", "/etc/gosync/config.cfg", "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
+	var ConfigFile string
+	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg", "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
-	if _, err := os.Stat(configFile); err == nil {
-		log.Printf("Using %s as config file", configFile)
-		cfg := config.ReadConfigFromFile(configFile)
-		firstrun.InitialSync(cfg)
+	if _, err := os.Stat(ConfigFile); err == nil {
+		log.Printf("Using %s as config file", ConfigFile)
+		config.ReadConfigFromFile(ConfigFile)
+		cfg := config.GetConfig()
+		firstrun.InitialSync()
 		for _, item := range cfg.Listeners {
 			log.Println("Working with: " + item.Directory)
 			go dbsync.DBCheckin(item.Directory, cfg)
@@ -45,7 +43,7 @@ func main() {
 		}
 		StartWebFileServer(cfg)
 	} else {
-		log.Fatalf("Config file specified does not exist (%s)", configFile)
+		log.Fatalf("Config file specified does not exist (%s)", ConfigFile)
 
 	}
 

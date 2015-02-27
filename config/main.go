@@ -5,6 +5,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"sync"
+)
+
+var (
+	config     *Configuration
+	configLock = new(sync.RWMutex)
 )
 
 type Configuration struct {
@@ -33,8 +39,9 @@ type StorageGDrive struct {
 }
 
 type BaseConfig struct {
-	ListenPort string `toml:"listen_port"`
-	RescanTime int    `toml:"rescan"`
+	ListenPort  string `toml:"listen_port"`
+	RescanTime  int    `toml:"rescan"`
+	StorageType string `toml:"storagetype"`
 }
 
 type listener struct {
@@ -48,17 +55,26 @@ type listener struct {
 	BasePath    string `toml:"basepath"`
 }
 
-func ReadConfigFromFile(configfile string) *Configuration {
+func ReadConfigFromFile(configfile string) {
+	log.Println("Loading configuration from disk...")
 	config_file, err := ioutil.ReadFile(configfile)
 	if err != nil {
 		panic(err.Error())
 	}
-	var conf Configuration
-	_, err = toml.Decode(string(config_file), &conf)
+	tempConf := new(Configuration)
+	_, err = toml.Decode(string(config_file), &tempConf)
 	if err != nil {
 		panic(err.Error())
 	}
-	return &conf
+	configLock.Lock()
+	config = tempConf
+	configLock.Unlock()
+}
+
+func GetConfig() *Configuration {
+	configLock.RLock()
+	defer configLock.RUnlock()
+	return config
 }
 
 func GetLocalIp() {

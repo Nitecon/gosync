@@ -3,6 +3,7 @@
 listen_port = "8080"
 # Rescan time in seconds, full rescan of the filesystem in x seconds
 rescan = 30
+storagetype=s3
 
 [StorageS3]
 key=""
