@@ -3,7 +3,6 @@ package fswatcher
 import (
 	"gopkg.in/fsnotify.v1"
 	"log"
-    //"gosync/storage"
     "gosync/dbsync"
     "gosync/fstools"
     "gosync/config"
