@@ -15,30 +15,93 @@ import (
 )
 
 type MySQLDB struct {
-    config *config.Configuration
-    db *sqlx.DB
+	config *config.Configuration
+	db     *sqlx.DB
 }
 
+func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
+	var isDirectory = 0
+	if item.IsDir {
+		isDirectory = 1
+	}
+	hostname, _ := os.Hostname()
+	tx := my.db.MustBegin()
+	tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
+		item.Filename,
+		isDirectory,
+		path.Base(item.Filename),
+		path.Dir(item.Filename),
+		item.Checksum,
+		time.Now().UTC(),
+		item.Mtime,
+		item.Perms,
+		hostname,
+		time.Now().UTC())
+	err := tx.Commit()
+	checkErr(err, "Error inserting data")
+	return true
+}
 
+func (my *MySQLDB) CheckEmpty(table string) bool {
+	var count int
+	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
+	if err != nil {
+		checkErr(err, "Error counting items in table: "+table)
+	}
+	var isEmpty = true
+	if count > 0 {
+		isEmpty = false
+	}
+	return isEmpty
+}
 
-func (my *MySQLDB) initDB() {
+func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
+	dTable := []prototypes.DataTable{}
+	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
+	//log.Println("Executing scan all items...")
+	err := my.db.Select(&dTable, query)
+	checkErr(err, "Error occurred getting file details for: "+table)
+	//log.Println("Executing scan all items... COMPLETE")
+	return dTable
+}
 
-    //cfg := my.config.config.GetConfig()
-    log.Printf("%+v", my.config)
-    log.Println("Starting DB Initialization")
-    log.Println("Getting Config")
+func (my *MySQLDB) CheckIn(table string) {
 
-    log.Println("Getting DB Connection")
-    tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
-    if err != nil {
-        log.Println(err.Error())
-    }
-    my.db = tempdb
-    //return db
+}
+
+func (my *MySQLDB) DBInit() {
+
+	log.Println("Database initialized")
+	for key, _ := range my.config.Listeners {
+		my.db.MustExec(createTableQuery(key))
+	}
+
 }
 
 func (my *MySQLDB) Close() error {
-    return my.db.Close()
+	return my.db.Close()
+}
+
+func (my *MySQLDB) initDB() {
+
+	//cfg := my.config.config.GetConfig()
+	log.Printf("%+v", my.config)
+	log.Println("Starting DB Initialization")
+	log.Println("Getting Config")
+
+	log.Println("Getting DB Connection")
+	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
+	if err != nil {
+		log.Println(err.Error())
+	}
+	my.db = tempdb
+	//return db
+}
+
+func checkErr(err error, msg string) {
+	if err != nil {
+		log.Fatalln(msg, err)
+	}
 }
 
 func createTableQuery(table string) string {
@@ -60,77 +123,4 @@ func createTableQuery(table string) string {
 `, table)
 
 	return createStmt
-}
-
-func  (my *MySQLDB) DBInit() {
-
-	log.Println("Database initialized")
-	for key, _ := range my.config.Listeners {
-        my.db.MustExec(createTableQuery(key))
-	}
-
-}
-
-func (my *MySQLDB) CheckIn( table string){
-
-}
-
-func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
-
-	var isDirectory = 0
-	if item.IsDir {
-		isDirectory = 1
-	}
-	hostname, _ := os.Hostname()
-	tx := my.db.MustBegin()
-
-	tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
-		item.Filename,
-		isDirectory,
-		path.Base(item.Filename),
-		path.Dir(item.Filename),
-		item.Checksum,
-		time.Now().UTC(),
-		item.Mtime,
-		item.Perms,
-		hostname,
-		time.Now().UTC())
-	err := tx.Commit()
-	checkErr(err, "Error inserting data")
-
-	return true
-}
-
-func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
-
-
-
-	dTable := []prototypes.DataTable{}
-	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
-	//log.Println("Executing scan all items...")
-	err := my.db.Select(&dTable, query)
-	checkErr(err, "Error occurred getting file details for: "+table)
-	//log.Println("Executing scan all items... COMPLETE")
-	return dTable
-}
-
-func (my *MySQLDB) CheckEmpty(table string) bool {
-	var count int
-
-	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
-	if err != nil {
-		checkErr(err, "Error counting items in table: "+table)
-	}
-	var isEmpty = true
-	if count > 0 {
-		isEmpty = false
-	}
-	return isEmpty
-}
-
-
-func checkErr(err error, msg string) {
-	if err != nil {
-		log.Fatalln(msg, err)
-	}
 }
