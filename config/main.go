@@ -55,6 +55,7 @@ type listener struct {
 	BasePath    string `toml:"basepath"`
 }
 
+
 func ReadConfigFromFile(configfile string) {
 	log.Println("Loading configuration from disk...")
 	config_file, err := ioutil.ReadFile(configfile)

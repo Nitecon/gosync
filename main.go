@@ -39,7 +39,7 @@ func main() {
 		firstrun.InitialSync()
 		for _, item := range cfg.Listeners {
 			log.Println("Working with: " + item.Directory)
-			go dbsync.DBCheckin(item.Directory, cfg)
+			go dbsync.CheckIn(item.Directory)
 			go fswatcher.SysPathWatcher(item.Directory)
 		}
 		StartWebFileServer(cfg)

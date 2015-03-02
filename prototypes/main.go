@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-//path, is_dir, filename, directory, checksum, atime, mtime, uid, gid, perms, host_updated, last_update
 type DataTable struct {
 	Id          int       `db:"id"`
 	Path        string    `db:"path"`

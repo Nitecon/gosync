@@ -29,9 +29,9 @@ func InitialSync() {
 
 	for key, listener := range cfg.Listeners {
 		// First check to see if the table is empty and do a full import false == not empty
-		if dbsync.DBCheckEmpty(key) == false {
+		if dbsync.CheckEmpty(key) == false {
 			// Database is not empty so pull the updates and match locally
-			items := dbsync.DBFetchAll(key)
+			items := dbsync.FetchAll(key)
 			// Walking the directory to get files.
 			fsItems := fstools.ListFilesInDir(listener.Directory)
 			for _, item := range items {
@@ -71,7 +71,7 @@ func InitialSync() {
 			// Database is empty so lets import
 			fsItems := fstools.ListFilesInDir(listener.Directory)
 			for _, item := range fsItems {
-				success := dbsync.InsertItem(key, item)
+				success := dbsync.Insert(key, item)
 				if success != true {
 					log.Printf("An error occurred inserting %x to database", item)
 				}

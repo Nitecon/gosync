@@ -27,7 +27,7 @@ func SysPathWatcher(path string) {
                     if err != nil{
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
-                    dbsync.InsertItem(getListener(path),fsItem)
+                    dbsync.Insert(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Rename == fsnotify.Rename {
 					log.Println("Rename occurred on:", event.Name)
@@ -35,7 +35,7 @@ func SysPathWatcher(path string) {
                     if err != nil{
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
-                    dbsync.InsertItem(getListener(path),fsItem)
+                    dbsync.Insert(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					log.Println("New File:", event.Name)
@@ -43,7 +43,7 @@ func SysPathWatcher(path string) {
                     if err != nil{
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
-                    dbsync.InsertItem(getListener(path),fsItem)
+                    dbsync.Insert(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
@@ -51,7 +51,7 @@ func SysPathWatcher(path string) {
                     if err != nil{
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
-                    dbsync.InsertItem(getListener(path),fsItem)
+                    dbsync.Insert(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					log.Println("Removed File: ", event.Name)
@@ -59,7 +59,7 @@ func SysPathWatcher(path string) {
                     if err != nil{
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
-                    dbsync.InsertItem(getListener(path),fsItem)
+                    dbsync.Insert(getListener(path),fsItem)
 				}
 			case err := <-watcher.Errors:
 				log.Println("error:", err)

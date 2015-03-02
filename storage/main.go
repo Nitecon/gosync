@@ -29,21 +29,6 @@ func setStorageEngine(listener string) {
 	}
 }
 
-func getRemoteBasePath(listener string) string {
-	cfg := config.GetConfig()
-	return cfg.Listeners[listener].BasePath
-}
-
-func getBaseDir(listener string) string {
-	cfg := config.GetConfig()
-	return cfg.Listeners[listener].Directory
-}
-
-func getRemotePath(listener, local_path string) string {
-	lPath := strings.TrimPrefix(local_path, getBaseDir(listener))
-	return getRemoteBasePath(listener) + lPath
-}
-
 func PutFile(local_path, listener string) error {
 	setStorageEngine(listener)
 
@@ -59,4 +44,19 @@ func GetFile(local_path, listener string) error {
 func CheckFileMD5(local_path, listener string) bool {
 	setStorageEngine(listener)
 	return storage.CheckMD5(local_path, getRemotePath(listener, local_path))
+}
+
+func getRemoteBasePath(listener string) string {
+    cfg := config.GetConfig()
+    return cfg.Listeners[listener].BasePath
+}
+
+func getBaseDir(listener string) string {
+    cfg := config.GetConfig()
+    return cfg.Listeners[listener].Directory
+}
+
+func getRemotePath(listener, local_path string) string {
+    lPath := strings.TrimPrefix(local_path, getBaseDir(listener))
+    return getRemoteBasePath(listener) + lPath
 }
