@@ -23,15 +23,14 @@ func setStorageEngine(listener string) {
 	var engine = cfg.Listeners[listener].StorageType
 	switch engine {
 	case "gdrive":
-		storage = &GDrive{}
+		storage = &GDrive{config:cfg, listener:listener}
 	case "s3":
-		storage = &S3{}
+		storage = &S3{config:cfg,listener:listener}
 	}
 }
 
 func PutFile(local_path, listener string) error {
 	setStorageEngine(listener)
-
 	return storage.Upload(local_path, getRemotePath(listener, local_path))
 }
 

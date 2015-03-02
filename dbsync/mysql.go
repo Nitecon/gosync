@@ -25,20 +25,45 @@ func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
 		isDirectory = 1
 	}
 	hostname, _ := os.Hostname()
+	var keyExists = []prototypes.DataTable{}
+	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE %s='%s' LIMIT 1", table, "path", item.Filename)
+	err := my.db.Select(&keyExists, query)
+	if err != nil {
+		log.Fatalf("Error checking for existence of key: %s, in table %s\n %+v", item.Filename, table, err)
+	}
 	tx := my.db.MustBegin()
-	tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
-		item.Filename,
-		isDirectory,
-		path.Base(item.Filename),
-		path.Dir(item.Filename),
-		item.Checksum,
-		time.Now().UTC(),
-		item.Mtime,
-		item.Perms,
-		hostname,
-		time.Now().UTC())
-	err := tx.Commit()
-	checkErr(err, "Error inserting data")
+	if len(keyExists) > 0 {
+		rowId := fmt.Sprintf("%d",keyExists[0].Id)
+		tx.MustExec("UPDATE "+table+" SET path=?, is_dir=?, filename=?, directory=?, checksum=?, atime=?, mtime=?, perms=?, host_updated=?, last_update=? WHERE id='"+rowId+"'",
+        item.Filename,
+        isDirectory,
+        path.Base(item.Filename),
+        path.Dir(item.Filename),
+        item.Checksum,
+        time.Now().UTC(),
+        item.Mtime,
+        item.Perms,
+        hostname,
+        time.Now().UTC(),
+        )
+		err = tx.Commit()
+		checkErr(err, "Error inserting data")
+	} else {
+		tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
+			item.Filename,
+			isDirectory,
+			path.Base(item.Filename),
+			path.Dir(item.Filename),
+			item.Checksum,
+			time.Now().UTC(),
+			item.Mtime,
+			item.Perms,
+			hostname,
+			time.Now().UTC())
+		err = tx.Commit()
+		checkErr(err, "Error inserting data")
+	}
+
 	return true
 }
 
@@ -58,18 +83,24 @@ func (my *MySQLDB) CheckEmpty(table string) bool {
 func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
 	dTable := []prototypes.DataTable{}
 	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
-	//log.Println("Executing scan all items...")
 	err := my.db.Select(&dTable, query)
 	checkErr(err, "Error occurred getting file details for: "+table)
-	//log.Println("Executing scan all items... COMPLETE")
 	return dTable
 }
 
-func (my *MySQLDB) CheckIn(table string) {
+func (my *MySQLDB) CheckIn(table string) []prototypes.DataTable{
+    hostname, _ := os.Hostname()
+    dTable := []prototypes.DataTable{}
+    query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY last_update ASC", table, hostname)
+    //log.Printf("Executing: %s", query)
+    err := my.db.Select(&dTable, query)
+    checkErr(err, "Error occurred getting file details for: "+table)
+    //log.Printf("Changed Items: %+v", dTable)
+    return dTable
 
 }
 
-func (my *MySQLDB) DBInit() {
+func (my *MySQLDB) CreateDB() {
 
 	log.Println("Database initialized")
 	for key, _ := range my.config.Listeners {
@@ -83,19 +114,27 @@ func (my *MySQLDB) Close() error {
 }
 
 func (my *MySQLDB) initDB() {
-
-	//cfg := my.config.config.GetConfig()
-	log.Printf("%+v", my.config)
-	log.Println("Starting DB Initialization")
-	log.Println("Getting Config")
-
-	log.Println("Getting DB Connection")
 	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
 	if err != nil {
 		log.Println(err.Error())
 	}
 	my.db = tempdb
-	//return db
+}
+
+func checkExists(db *sqlx.DB, table, key, val string) bool {
+	var keyExists = 0
+	var query = fmt.Sprintf("SELECT 1 FROM ? WHERE ?='?' LIMIT 1", table, key, val)
+	err := db.Get(&keyExists, query)
+	if err != nil {
+		checkErr(err, "Error checking existence of ("+key+") in table: "+table)
+	}
+	if keyExists > 0 {
+		return true
+	} else {
+		return false
+	}
+	return false
+
 }
 
 func checkErr(err error, msg string) {
@@ -107,7 +146,7 @@ func checkErr(err error, msg string) {
 func createTableQuery(table string) string {
 	var createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
 	id int(10) unsigned NOT NULL AUTO_INCREMENT,
-  path text COLLATE utf8_unicode_ci NOT NULL,
+  path varchar(4096) COLLATE utf8_unicode_ci NOT NULL,
   is_dir int NOT NULL,
   filename varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   directory varchar(255) COLLATE utf8_unicode_ci NOT NULL,
@@ -119,7 +158,6 @@ func createTableQuery(table string) string {
   last_update timestamp default now() NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
 `, table)
 
 	return createStmt

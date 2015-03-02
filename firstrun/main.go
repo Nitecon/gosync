@@ -24,7 +24,7 @@ func InitialSync() {
 	cfg := config.GetConfig()
 
 	log.Println("Verifying DB Tables")
-	dbsync.DBInit()
+	dbsync.CreateDB()
 	log.Println("Initial sync starting...")
 
 	for key, listener := range cfg.Listeners {

@@ -1,9 +1,13 @@
 package storage
 
-import "log"
+import (
+    "log"
+    "gosync/config"
+)
 
 type GDrive struct {
-	config string
+	config *config.Configuration
+    listener string
 }
 
 func (g *GDrive) Upload(local_path, remote_path string) error {

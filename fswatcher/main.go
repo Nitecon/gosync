@@ -6,6 +6,7 @@ import (
     "gosync/dbsync"
     "gosync/fstools"
     "gosync/config"
+    "gosync/storage"
 )
 
 func SysPathWatcher(path string) {
@@ -52,6 +53,7 @@ func SysPathWatcher(path string) {
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
                     dbsync.Insert(getListener(path),fsItem)
+                    storage.PutFile(event.Name, getListener(path))
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					log.Println("Removed File: ", event.Name)

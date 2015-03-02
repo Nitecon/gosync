@@ -16,8 +16,8 @@ type Datastore interface {
     Insert(table string, item fstools.FsItem) bool
     CheckEmpty(table string) bool
     FetchAll(table string) []prototypes.DataTable
-    CheckIn(path string)
-    DBInit()
+    CheckIn(path string) []prototypes.DataTable
+    CreateDB()
     Close() error // call this method when you want to close the connection
     initDB()
 }
@@ -64,6 +64,8 @@ func CheckIn(path string){
             select {
             case <-ticker.C:
                 log.Println("Checking all changed stuff in db for: " + path)
+                listener := getListener(path)
+                storage.CheckIn(listener)
             // @TODO: check that db knows Im alive.
             case <-quit:
                 ticker.Stop()
@@ -73,8 +75,18 @@ func CheckIn(path string){
     }()
 }
 
-func DBInit(){
+func CreateDB(){
     setStorageEngine()
-    storage.DBInit()
+    storage.CreateDB()
 }
 
+func getListener(dir string) string {
+    cfg := config.GetConfig()
+    var listener = ""
+    for lname, ldata := range cfg.Listeners{
+        if ldata.Directory == dir{
+            listener = lname
+        }
+    }
+    return listener
+}

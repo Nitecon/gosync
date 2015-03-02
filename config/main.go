@@ -15,10 +15,10 @@ var (
 
 type Configuration struct {
 	ServerConfig BaseConfig
-	S3Config     StorageS3
+	S3Config     StorageS3 `toml:"StorageS3"`
 	GDConfig     StorageGDrive
 	Database     Database
-	Listeners    map[string]listener
+	Listeners    map[string]Listener
 }
 
 type Database struct {
@@ -27,9 +27,9 @@ type Database struct {
 }
 
 type StorageS3 struct {
-	Key    string
-	Secret string
-	Region string
+	Key    string `toml:"key"`
+	Secret string `toml:"secret"`
+	Region string `toml:"region"`
 }
 
 type StorageGDrive struct {
@@ -44,7 +44,7 @@ type BaseConfig struct {
 	StorageType string `toml:"storagetype"`
 }
 
-type listener struct {
+type Listener struct {
 	Directory   string
 	Key         string
 	Secret      string
