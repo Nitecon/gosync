@@ -5,6 +5,7 @@ import (
 
 	"strings"
     "log"
+    "html"
 )
 
 var (
@@ -37,11 +38,7 @@ func PutFile(local_path, listener string) error {
 
 func GetFile(local_path, listener string) error {
 	setStorageEngine(listener)
-    cfg := config.GetConfig()
-    basePath := cfg.Listeners[listener].BasePath
-    remotePath := basePath + strings.TrimPrefix(local_path, cfg.Listeners[listener].Directory)
-
-	err := storage.Download(remotePath, local_path)
+	err := storage.Download(getRemotePath(listener, local_path), local_path)
     if err != nil{
         log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }
@@ -66,5 +63,5 @@ func getBaseDir(listener string) string {
 func getRemotePath(listener, local_path string) string {
     lPath := strings.TrimPrefix(local_path, getBaseDir(listener))
     log.Println("==>REMOTEPATH: "+ lPath)
-    return getRemoteBasePath(listener) + lPath
+    return getRemoteBasePath(listener) + html.UnescapeString(lPath)
 }
