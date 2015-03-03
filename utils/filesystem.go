@@ -5,6 +5,7 @@ import (
     "strings"
     "os"
     "io"
+    "log"
 )
 
 func GetBasePath(listener string) string {
@@ -27,7 +28,9 @@ func GetRelativePath(listener, local_path string) string {
 }
 
 func GetAbsPath(listener, db_path string) string {
-    return GetBaseDir(listener) + db_path
+    absPath := GetBaseDir(listener) + db_path
+    log.Printf("=====> Absolute Path: %s <=====", absPath)
+    return absPath
 }
 
 func FileWrite(path string, content io.Reader, overwrite bool, uid, gid int, perms string) (int64,error ){
