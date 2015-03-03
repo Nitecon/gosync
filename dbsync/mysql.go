@@ -7,6 +7,7 @@ import (
 	"gosync/config"
 	"gosync/fstools"
 	"gosync/prototypes"
+	"gosync/utils"
 	"log"
 	//"net/url"
 	"os"
@@ -33,24 +34,24 @@ func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
 	}
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
-		rowId := fmt.Sprintf("%d",keyExists[0].Id)
+		rowId := fmt.Sprintf("%d", keyExists[0].Id)
 		tx.MustExec("UPDATE "+table+" SET path=?, is_dir=?, filename=?, directory=?, checksum=?, atime=?, mtime=?, perms=?, host_updated=?, last_update=? WHERE id='"+rowId+"'",
-        item.Filename,
-        isDirectory,
-        path.Base(item.Filename),
-        path.Dir(item.Filename),
-        item.Checksum,
-        time.Now().UTC(),
-        item.Mtime,
-        item.Perms,
-        hostname,
-        time.Now().UTC(),
-        )
+			utils.GetRelativePath(table, item.Filename),
+			isDirectory,
+			path.Base(item.Filename),
+			path.Dir(item.Filename),
+			item.Checksum,
+			time.Now().UTC(),
+			item.Mtime,
+			item.Perms,
+			hostname,
+			time.Now().UTC(),
+		)
 		err = tx.Commit()
 		checkErr(err, "Error inserting data")
 	} else {
 		tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
-			item.Filename,
+			utils.GetRelativePath(table, item.Filename),
 			isDirectory,
 			path.Base(item.Filename),
 			path.Dir(item.Filename),
@@ -88,15 +89,15 @@ func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
 	return dTable
 }
 
-func (my *MySQLDB) CheckIn(table string) []prototypes.DataTable{
-    hostname, _ := os.Hostname()
-    dTable := []prototypes.DataTable{}
-    query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY last_update ASC", table, hostname)
-    //log.Printf("Executing: %s", query)
-    err := my.db.Select(&dTable, query)
-    checkErr(err, "Error occurred getting file details for: "+table)
-    //log.Printf("Changed Items: %+v", dTable)
-    return dTable
+func (my *MySQLDB) CheckIn(table string) []prototypes.DataTable {
+	hostname, _ := os.Hostname()
+	dTable := []prototypes.DataTable{}
+	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY last_update ASC", table, hostname)
+	//log.Printf("Executing: %s", query)
+	err := my.db.Select(&dTable, query)
+	checkErr(err, "Error occurred getting file details for: "+table)
+	//log.Printf("Changed Items: %+v", dTable)
+	return dTable
 
 }
 

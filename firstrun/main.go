@@ -6,14 +6,16 @@ import (
 	"gosync/fstools"
 	"gosync/prototypes"
 	"gosync/storage"
+    "gosync/utils"
 	"log"
 	"os"
 )
 
-func getFileInDatabase(dbItem prototypes.DataTable, fsItems []fstools.FsItem) (bool, string) {
+func getFileInDatabase(dbItem prototypes.DataTable, fsItems []fstools.FsItem, listener string) (bool, string) {
 	for _, fsitem := range fsItems {
-		if fsitem.Filename == dbItem.Path {
-			return true, dbItem.Path
+        dbFullPath := utils.GetAbsPath(listener, dbItem.Path)
+		if fsitem.Filename == dbFullPath {
+			return true, dbFullPath
 		}
 
 	}
@@ -35,7 +37,7 @@ func InitialSync() {
 			// Walking the directory to get files.
 			fsItems := fstools.ListFilesInDir(listener.Directory)
 			for _, item := range items {
-				itemMatch, pathMatch := getFileInDatabase(item, fsItems)
+				itemMatch, pathMatch := getFileInDatabase(item, fsItems, key)
 				if itemMatch {
 					// Check to make sure it's not a directory as directories don't need to be uploaded
 					if !item.IsDirectory {

@@ -7,20 +7,16 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+    "gosync/utils"
 	"os"
-	"strings"
 )
-
-func getNodePath(listener, local_path string) string {
-	return strings.TrimPrefix(local_path, getBaseDir(listener))
-}
 
 func GetNodeCopy(item prototypes.DataTable, listener string) bool {
 	cfg := config.GetConfig()
 	lConf := cfg.Listeners[listener]
 	log.Println("Downloading file...")
 
-	rawURL := "http://" + item.HostUpdated + ":" + cfg.ServerConfig.ListenPort + "/" + listener + getNodePath(listener, item.Path)
+	rawURL := "http://" + item.HostUpdated + ":" + cfg.ServerConfig.ListenPort + "/" + listener + utils.GetRelativePath(listener, item.Path)
 
 	_, err := url.Parse(rawURL)
 

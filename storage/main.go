@@ -2,10 +2,10 @@ package storage
 
 import (
 	"gosync/config"
+    "gosync/utils"
 
-	"strings"
     "log"
-    "html"
+
 )
 
 var (
@@ -33,12 +33,12 @@ func setStorageEngine(listener string) {
 
 func PutFile(local_path, listener string) error {
 	setStorageEngine(listener)
-	return storage.Upload(local_path, getRemotePath(listener, local_path))
+	return storage.Upload(local_path, utils.GetRelativeBasePath(listener, local_path))
 }
 
 func GetFile(local_path, listener string) error {
 	setStorageEngine(listener)
-	err := storage.Download(getRemotePath(listener, local_path), local_path)
+	err := storage.Download(utils.GetRelativeBasePath(listener, local_path), local_path)
     if err != nil{
         log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }
@@ -47,21 +47,5 @@ func GetFile(local_path, listener string) error {
 
 func CheckFileMD5(local_path, listener string) bool {
 	setStorageEngine(listener)
-	return storage.CheckMD5(local_path, getRemotePath(listener, local_path))
-}
-
-func getRemoteBasePath(listener string) string {
-    cfg := config.GetConfig()
-    return cfg.Listeners[listener].BasePath
-}
-
-func getBaseDir(listener string) string {
-    cfg := config.GetConfig()
-    return cfg.Listeners[listener].Directory
-}
-
-func getRemotePath(listener, local_path string) string {
-    lPath := strings.TrimPrefix(local_path, getBaseDir(listener))
-    log.Println("==>REMOTEPATH: "+ lPath)
-    return getRemoteBasePath(listener) + html.UnescapeString(lPath)
+	return storage.CheckMD5(local_path, utils.GetRelativeBasePath(listener, local_path))
 }
