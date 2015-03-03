@@ -83,7 +83,7 @@ func (my *MySQLDB) CheckEmpty(table string) bool {
 
 func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
 	dTable := []prototypes.DataTable{}
-	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY last_update ASC"
+	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY is_dir DESC"
 	err := my.db.Select(&dTable, query)
 	checkErr(err, "Error occurred getting file details for: "+table)
 	return dTable
@@ -92,7 +92,7 @@ func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
 func (my *MySQLDB) CheckIn(table string) []prototypes.DataTable {
 	hostname, _ := os.Hostname()
 	dTable := []prototypes.DataTable{}
-	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY last_update ASC", table, hostname)
+	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
 	//log.Printf("Executing: %s", query)
 	err := my.db.Select(&dTable, query)
 	checkErr(err, "Error occurred getting file details for: "+table)

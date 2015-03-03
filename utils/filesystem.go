@@ -5,7 +5,7 @@ import (
     "strings"
     "os"
     "io"
-    "log"
+    //"log"
 )
 
 func GetBasePath(listener string) string {
@@ -31,6 +31,14 @@ func GetAbsPath(listener, db_path string) string {
     absPath := GetBaseDir(listener) + db_path
     //log.Printf("=====> Absolute Path: %s <=====", absPath)
     return absPath
+}
+
+// exists returns whether the given file or directory exists or not
+func ItemExists(path string) (bool, error) {
+    _, err := os.Stat(path)
+    if err == nil { return true, nil }
+    if os.IsNotExist(err) { return false, nil }
+    return false, err
 }
 
 func FileWrite(path string, content io.Reader, overwrite bool, uid, gid int, perms string) (int64,error ){

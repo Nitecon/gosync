@@ -6,14 +6,14 @@ import (
 	"gosync/fstools"
 	"gosync/prototypes"
 	"gosync/storage"
-    "gosync/utils"
+	"gosync/utils"
 	"log"
 	"os"
 )
 
 func getFileInDatabase(dbItem prototypes.DataTable, fsItems []fstools.FsItem, listener string) (bool, string) {
 	for _, fsitem := range fsItems {
-        dbFullPath := utils.GetAbsPath(listener, dbItem.Path)
+		dbFullPath := utils.GetAbsPath(listener, dbItem.Path)
 		if fsitem.Filename == dbFullPath {
 			return true, dbFullPath
 		}
@@ -66,14 +66,21 @@ func InitialSync() {
 				} else {
 					// Item doesn't exist locally but exists in DB so restore it
 					log.Printf("Item Deleted Locally: %s restoring from DB marker", pathMatch)
-                    hostname, _ := os.Hostname()
-                    if item.HostUpdated != hostname {
+                    absPath := utils.GetAbsPath(key, item.Path)
+                    if item.IsDirectory{
+                        dirExists,_ := utils.ItemExists(absPath)
+                        if !dirExists{
+                            os.MkdirAll(absPath, 0775)
+                        }
+                    }else{
                         if !storage.GetNodeCopy(item, key) {
                             log.Printf("Server is down for %s going to backup storage", key)
                             // The server must be down so lets get it from S3
-                            storage.GetFile(utils.GetAbsPath(key, item.Path), key)
+                            storage.GetFile(absPath, key)
                         }
                     }
+
+
 				}
 			}
 
