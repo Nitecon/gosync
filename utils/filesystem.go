@@ -33,6 +33,17 @@ func GetAbsPath(listener, db_path string) string {
     return absPath
 }
 
+func GetListenerFromDir(dir string) string {
+    cfg := config.GetConfig()
+    var listener = ""
+    for lname, ldata := range cfg.Listeners{
+        if ldata.Directory == dir{
+            listener = lname
+        }
+    }
+    return listener
+}
+
 // exists returns whether the given file or directory exists or not
 func ItemExists(path string) (bool, error) {
     _, err := os.Stat(path)

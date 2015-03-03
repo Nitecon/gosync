@@ -7,8 +7,7 @@ package main
 import (
 	"flag"
 	"gosync/config"
-	"gosync/dbsync"
-	"gosync/firstrun"
+    "gosync/replicator"
 	"gosync/fswatcher"
 	"log"
 	"net/http"
@@ -36,10 +35,10 @@ func main() {
 		log.Printf("Using %s as config file", ConfigFile)
 		config.ReadConfigFromFile(ConfigFile)
 		cfg := config.GetConfig()
-		firstrun.InitialSync()
+        replicator.InitialSync()
 		for _, item := range cfg.Listeners {
 			log.Println("Working with: " + item.Directory)
-			go dbsync.CheckIn(item.Directory)
+			go replicator.CheckIn(item.Directory)
 			go fswatcher.SysPathWatcher(item.Directory)
 		}
 		StartWebFileServer(cfg)

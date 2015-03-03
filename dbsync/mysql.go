@@ -89,15 +89,13 @@ func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
 	return dTable
 }
 
-func (my *MySQLDB) CheckIn(table string) []prototypes.DataTable {
+func (my *MySQLDB) CheckIn(table string) ([]prototypes.DataTable, error) {
 	hostname, _ := os.Hostname()
 	dTable := []prototypes.DataTable{}
 	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
 	//log.Printf("Executing: %s", query)
 	err := my.db.Select(&dTable, query)
-	checkErr(err, "Error occurred getting file details for: "+table)
-	//log.Printf("Changed Items: %+v", dTable)
-	return dTable
+	return dTable, err
 
 }
 
