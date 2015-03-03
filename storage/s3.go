@@ -4,7 +4,6 @@ import (
 	"github.com/rlmcpherson/s3gof3r"
 	"gosync/config"
 	"log"
-	"net/http"
 	"os"
     "io"
 )
@@ -19,51 +18,79 @@ type Keys struct {
     AccessKey     string
     SecretKey     string
     SecurityToken string
+
 }
 
 func (s *S3) Upload(local_path, remote_path string) error {
-    log.Printf("S3 Uploading %s -> %s", local_path, remote_path)
-	conf := new(s3gof3r.Config)
-	*conf = *s3gof3r.DefaultConfig
-    keys := new(s3gof3r.Keys)
-    keys.AccessKey = s.config.S3Config.Key
-    keys.SecretKey = s.config.S3Config.Secret
+    conf,keys := s.GetS3Config()
 
-	s3 := s3gof3r.New("s3.amazonaws.com", *keys)
-	b := s3.Bucket(s.config.Listeners[s.listener].Bucket)
-	conf.Concurrency = 10
-	// Setting debug to true (last var below)
-	s3gof3r.SetLogger(os.Stderr, "", log.LstdFlags, true)
-	r, err := os.Open(local_path)
-	if err != nil {
-        log.Fatalf("Error occurred opening local file (%s): %+v", err.Error(), err)
-	}
-	defer r.Close()
-    header := make(http.Header)
+    // Open bucket to put file into
+    s3 := s3gof3r.New("", *keys)
+    b := s3.Bucket(s.config.Listeners[s.listener].Bucket)
 
-	w, err := b.PutWriter(remote_path, header, conf)
-	if err != nil {
-        log.Fatalf("Error getting put writer (%s): %+v", err.Error(), err)
-	}
-	if _, err = io.Copy(w, r); err != nil {
-        log.Fatalf("Error occurred with io.Copy (%s): %+v", err.Error(), err)
-	}
-	if err = w.Close(); err != nil {
-        log.Fatalf("Error occurred closing s3 writer (%s): %+v", err.Error(), err)
-	}
-	log.Printf("S3 Uploading %s -> %s", local_path, remote_path)
-	return nil
+    // open file to upload
+    file, err := os.Open(local_path)
+    if err != nil {
+        return err
+    }
+
+    // Open a PutWriter for upload
+    w, err := b.PutWriter(remote_path, nil, conf)
+    if err != nil {
+        return err
+    }
+    if _, err = io.Copy(w, file); err != nil { // Copy into S3
+        return err
+    }
+    if err = w.Close(); err != nil {
+        return err
+    }
+    return nil
+
 }
 
 func (s *S3) Download(remote_path, local_path string) error {
-	log.Printf("S3 Downloading %s -> %s", remote_path, local_path)
-	return nil
+    log.Printf("S3 Downloading %s -> %s", remote_path, local_path)
+    conf,keys := s.GetS3Config()
+
+    // Open bucket to put file into
+    s3 := s3gof3r.New("", *keys)
+    b := s3.Bucket(s.config.Listeners[s.listener].Bucket)
+
+    r, h, err := b.GetReader(remote_path, conf)
+    if err != nil {
+        return err
+    }
+    // stream to standard output
+    if _, err = io.Copy(os.Stdout, r); err != nil {
+        return err
+    }
+    err = r.Close()
+    if err != nil {
+        return err
+    }
+    log.Println(h) // print key header data
+
+    return nil
 }
 
 func (s *S3) CheckMD5(local_path, remote_path string) bool {
 	log.Printf("S3 MD5 Check %s -> %s", local_path, remote_path)
 	return true
 }
+
+func (s *S3) GetS3Config() (*s3gof3r.Config, *s3gof3r.Keys){
+    conf := new(s3gof3r.Config)
+    *conf = *s3gof3r.DefaultConfig
+    keys := new(s3gof3r.Keys)
+    keys.AccessKey = s.config.S3Config.Key
+    keys.SecretKey = s.config.S3Config.Secret
+    conf.Concurrency = 10
+    // Setting debug to true (last var below)
+    s3gof3r.SetLogger(os.Stderr, "", log.LstdFlags, true)
+    return conf, keys
+}
+
 func getListener(dir string) string {
 	cfg := config.GetConfig()
 	var listener = ""

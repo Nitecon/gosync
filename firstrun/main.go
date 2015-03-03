@@ -37,7 +37,7 @@ func InitialSync() {
 			for _, item := range items {
 				itemMatch, pathMatch := getFileInDatabase(item, fsItems)
 				if itemMatch {
-					// Check to see if the checksum matches, if not check update times and upload / download
+					// Check to make sure it's not a directory as directories don't need to be uploaded
 					if !item.IsDirectory {
 
 						fileMD5 := fstools.GetMd5Checksum(pathMatch)
@@ -64,6 +64,17 @@ func InitialSync() {
 				} else {
 					// Item doesn't exist locally but exists in DB so restore it
 					log.Printf("Item Deleted Locally: %s restoring from DB marker", pathMatch)
+                    hostname, _ := os.Hostname()
+                    if item.HostUpdated != hostname {
+                        if !storage.GetNodeCopy(item, key) {
+                            log.Printf("Server is down for %s going to backup storage", key)
+                            // The server must be down so lets get it from S3
+                            err := storage.GetFile(pathMatch, key)
+                            if err != nil{
+                                log.Printf("Error occurred downloading from storage (%s): %+v", err.Error(), err)
+                            }
+                        }
+                    }
 				}
 			}
 
@@ -75,6 +86,10 @@ func InitialSync() {
 				if success != true {
 					log.Printf("An error occurred inserting %x to database", item)
 				}
+				if !item.IsDir {
+					storage.PutFile(item.Filename, key)
+				}
+
 			}
 		}
 

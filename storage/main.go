@@ -4,6 +4,7 @@ import (
 	"gosync/config"
 
 	"strings"
+    "log"
 )
 
 var (
@@ -36,8 +37,11 @@ func PutFile(local_path, listener string) error {
 
 func GetFile(local_path, listener string) error {
 	setStorageEngine(listener)
-
-	return storage.Download(getRemotePath(listener, local_path), local_path)
+	err := storage.Download(getRemotePath(listener, local_path), local_path)
+    if err != nil{
+        log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
+    }
+    return err
 }
 
 func CheckFileMD5(local_path, listener string) bool {

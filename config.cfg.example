@@ -32,6 +32,7 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
 	secret = "aslkdfjaslfjka;sljd"
 	storagetype="s3"
 	bucket="fssync"
+	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
 	basepath="/fssync"
 
 	[listeners.Bootstrapped]
@@ -42,4 +43,5 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
 	secret = "oiweurldkfj"
 	storage="s3"
 	bucket="fssync"
+	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
 	basepath="/fssync"
