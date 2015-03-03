@@ -4,22 +4,19 @@ import (
 	"gosync/config"
 	"gosync/dbsync"
 	"gosync/fstools"
-	"gosync/prototypes"
 	"gosync/storage"
 	"gosync/utils"
 	"log"
 	"os"
 )
 
-func getFileInDatabase(dbItem prototypes.DataTable, fsItems []fstools.FsItem, listener string) (bool, string) {
+func getFileInDatabase(dbPath string, fsItems []fstools.FsItem) bool {
 	for _, fsitem := range fsItems {
-		dbFullPath := utils.GetAbsPath(listener, dbItem.Path)
-		if fsitem.Filename == dbFullPath {
-			return true, dbFullPath
+		if fsitem.Filename == dbPath {
+			return true
 		}
-
 	}
-	return false, dbItem.Path
+	return false
 }
 
 func InitialSync() {
@@ -37,12 +34,13 @@ func InitialSync() {
 			// Walking the directory to get files.
 			fsItems := fstools.ListFilesInDir(listener.Directory)
 			for _, item := range items {
-				itemMatch, pathMatch := getFileInDatabase(item, fsItems, key)
+                absPath := utils.GetAbsPath(key, item.Path)
+				itemMatch := getFileInDatabase(absPath, fsItems)
 				if itemMatch {
 					// Check to make sure it's not a directory as directories don't need to be uploaded
 					if !item.IsDirectory {
 
-						fileMD5 := fstools.GetMd5Checksum(pathMatch)
+						fileMD5 := fstools.GetMd5Checksum(absPath)
 						if fileMD5 == item.Checksum {
 							//log.Printf("Found %s in db and fs, matching md5...", pathMatch)
 							//@TODO: download the file and set corrected params for file.
@@ -50,23 +48,23 @@ func InitialSync() {
 							if item.HostUpdated != hostname {
 								if !storage.GetNodeCopy(item, key) {
 									// The server must be down so lets get it from S3
-									storage.GetFile(pathMatch, key)
+									storage.GetFile(absPath, key)
 								}
 							}
 
 						} else {
-							//log.Printf("Found %s in db and fs, MD5 mismatch... DOWNLOADING", pathMatch)
+							log.Printf("Found %s in db and fs, MD5 mismatch... %s <> %s", absPath, item.Checksum, fileMD5)
 
 							// Last resort download from S3
-							storage.GetFile(pathMatch, key)
+							storage.GetFile(absPath, key)
 						}
 					}
 					// Now we check to make sure the files match correct users etc
 
 				} else {
 					// Item doesn't exist locally but exists in DB so restore it
-					log.Printf("Item Deleted Locally: %s restoring from DB marker", pathMatch)
-                    absPath := utils.GetAbsPath(key, item.Path)
+					log.Printf("Item Deleted Locally: %s restoring from DB marker", absPath)
+
                     if item.IsDirectory{
                         dirExists,_ := utils.ItemExists(absPath)
                         if !dirExists{

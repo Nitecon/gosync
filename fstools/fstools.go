@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+    "math"
 	"path/filepath"
 	"time"
 )
@@ -65,7 +66,7 @@ func GetMd5Checksum(filepath string) string {
 	}
 }
 
-func ComputeMd5(filePath string) ([]byte, error) {
+func ComputedMd5(filePath string) ([]byte, error) {
 	var result []byte
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -79,7 +80,37 @@ func ComputeMd5(filePath string) ([]byte, error) {
 	}
 
 	return hash.Sum(result), nil
+}
 
+func ComputeMd5(filepath string) (string, error){
+    const filechunk = 8192
+    file, err := os.Open(filepath)
+
+    if err != nil {
+        return "", err
+    }
+
+    defer file.Close()
+
+    // calculate the file size
+    info, _ := file.Stat()
+
+    filesize := info.Size()
+
+    blocks := uint64(math.Ceil(float64(filesize) / float64(filechunk)))
+
+    hash := md5.New()
+
+    for i := uint64(0); i < blocks; i++ {
+        blocksize := int(math.Min(filechunk, float64(filesize-int64(i*filechunk))))
+        buf := make([] byte, blocksize)
+
+        file.Read(buf)
+        io.WriteString(hash, string(buf))   // append into the hash
+    }
+
+    //fmt.Printf("%s checksum is %x\n",file.Name(), hash.Sum(nil))
+    return fmt.Sprintf("%x",hash.Sum(nil)), nil
 }
 
 func checkErr(err error, msg string) {

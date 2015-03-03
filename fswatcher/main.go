@@ -52,8 +52,8 @@ func SysPathWatcher(path string) {
                     if err != nil{
                         log.Fatalf("Error getting file details for %s: %+v", event.Name, err)
                     }
-                    dbsync.Insert(getListener(path),fsItem)
                     storage.PutFile(event.Name, getListener(path))
+                    dbsync.Insert(getListener(path),fsItem)
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					log.Println("Removed File: ", event.Name)
