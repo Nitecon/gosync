@@ -3,12 +3,10 @@ package storage
 import (
 	"gosync/config"
 	"gosync/prototypes"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
     "gosync/utils"
-	"os"
 )
 
 func GetNodeCopy(item prototypes.DataTable, listener string) bool {
@@ -45,31 +43,11 @@ func GetNodeCopy(item prototypes.DataTable, listener string) bool {
 		log.Fatalf("File not found %s", rawURL)
 	}
 
-	if _, err := os.Stat(item.Path); err == nil {
-		// We wipe the file as we need to replace with a new one
-		err := os.Remove(item.Path)
-		if err != nil {
-			log.Fatalf("Could not remove file %s : %+v", item.Path, err.Error())
-		}
+    size, fserr := utils.FileWrite(item.Path, resp.Body, true, lConf.Uid, lConf.Gid, item.Perms)
+    if fserr != nil {
+        log.Fatalf("Error occurred writing file (%s): %+v", fserr.Error(), fserr)
+    }
 
-	}
-
-	file, err := os.Create(item.Path)
-
-	if err != nil {
-		log.Println(err)
-		panic(err)
-	}
-	defer file.Close()
-
-	size, err := io.Copy(file, resp.Body)
-
-	if err != nil {
-		panic(err)
-	}
-
-	file.Chown(lConf.Uid, lConf.Gid)
-	//file.Chmod(os.FileMode(item.Perms))
 
 	log.Printf("%s with %v bytes downloaded", item.Path, size)
 	return true
