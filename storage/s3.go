@@ -3,6 +3,7 @@ package storage
 import (
 	"github.com/rlmcpherson/s3gof3r"
 	"gosync/config"
+    "gosync/utils"
 	"log"
 	"os"
     "io"
@@ -50,7 +51,7 @@ func (s *S3) Upload(local_path, remote_path string) error {
 }
 
 func (s *S3) Download(remote_path, local_path string) error {
-    log.Printf("S3 Downloading %s -> %s", remote_path, local_path)
+    log.Printf("S3 Downloading %s -> %s", remote_path, utils.GetRelativePath(s.listener, local_path))
     conf,keys := s.GetS3Config()
 
     // Open bucket to put file into
@@ -62,7 +63,7 @@ func (s *S3) Download(remote_path, local_path string) error {
         return err
     }
     // stream to standard output
-    if _, err = io.Copy(os.Stdout, r); err != nil {
+    if _, err = io.Copy(utils.GetRelativePath(s.listener, local_path), r); err != nil {
         return err
     }
     err = r.Close()
