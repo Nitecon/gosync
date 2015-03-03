@@ -63,7 +63,7 @@ func (s *S3) Download(remote_path, local_path string) error {
         return err
     }
     // stream to standard output
-    if _, err = io.Copy(utils.GetRelativePath(s.listener, local_path), r); err != nil {
+    if _, err = io.Copy(os.Stdout, r); err != nil {
         return err
     }
     err = r.Close()
