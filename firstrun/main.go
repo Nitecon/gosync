@@ -41,7 +41,7 @@ func InitialSync() {
 					if !item.IsDirectory {
 
 						fileMD5 := fstools.GetMd5Checksum(absPath)
-						if fileMD5 == item.Checksum {
+						if fileMD5 != item.Checksum {
 							//log.Printf("Found %s in db and fs, matching md5...", pathMatch)
 							//@TODO: download the file and set corrected params for file.
 							hostname, _ := os.Hostname()
@@ -51,12 +51,6 @@ func InitialSync() {
 									storage.GetFile(absPath, key)
 								}
 							}
-
-						} else {
-							log.Printf("Found %s in db and fs, MD5 mismatch... %s <> %s", absPath, item.Checksum, fileMD5)
-
-							// Last resort download from S3
-							storage.GetFile(absPath, key)
 						}
 					}
 					// Now we check to make sure the files match correct users etc
