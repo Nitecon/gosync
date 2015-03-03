@@ -27,10 +27,12 @@ func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
 	}
 	hostname, _ := os.Hostname()
 	var keyExists = []prototypes.DataTable{}
-	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE %s='%s' LIMIT 1", table, "path", item.Filename)
+    relFileName := string(utils.GetRelativePath(table, item.Filename))
+	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE path='%s' LIMIT 1", table, relFileName)
+
 	err := my.db.Select(&keyExists, query)
 	if err != nil {
-		log.Fatalf("Error checking for existence of key: %s, in table %s\n %+v", item.Filename, table, err)
+		log.Printf("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
 	}
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
@@ -149,7 +151,7 @@ func createTableQuery(table string) string {
   is_dir int NOT NULL,
   filename varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   directory varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  checksum varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  checksum varchar(2048) COLLATE utf8_unicode_ci NOT NULL,
   atime timestamp NOT NULL,
   mtime timestamp NOT NULL,
   perms varchar(12) COLLATE utf8_unicode_ci NOT NULL,

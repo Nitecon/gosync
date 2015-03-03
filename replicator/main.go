@@ -89,10 +89,9 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
         if itemMatch {
             // Check to make sure it's not a directory as directories don't need to be uploaded
             if !item.IsDirectory {
-
                 fileMD5 := fstools.GetMd5Checksum(absPath)
                 if fileMD5 != item.Checksum {
-                    //log.Printf("Found %s in db and fs, matching md5...", pathMatch)
+                    log.Printf("Found %s in db(%s) and fs(%s), NOT matching md5...", absPath, item.Checksum, fileMD5)
                     //@TODO: download the file and set corrected params for file.
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
