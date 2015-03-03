@@ -29,7 +29,7 @@ func GetRelativePath(listener, local_path string) string {
 
 func GetAbsPath(listener, db_path string) string {
     absPath := GetBaseDir(listener) + db_path
-    log.Printf("=====> Absolute Path: %s <=====", absPath)
+    //log.Printf("=====> Absolute Path: %s <=====", absPath)
     return absPath
 }
 

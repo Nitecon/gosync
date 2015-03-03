@@ -71,7 +71,7 @@ func InitialSync() {
                         if !storage.GetNodeCopy(item, key) {
                             log.Printf("Server is down for %s going to backup storage", key)
                             // The server must be down so lets get it from S3
-                            storage.GetFile(pathMatch, key)
+                            storage.GetFile(utils.GetAbsPath(key, item.Path), key)
                         }
                     }
 				}
