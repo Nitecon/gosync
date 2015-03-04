@@ -51,7 +51,7 @@ func (s *S3) Upload(local_path, remote_path string) error {
 
 }
 
-func (s *S3) Download(remote_path, local_path string) error {
+func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string) error {
     log.Printf("S3 Downloading %s -> %s", remote_path, local_path)
     conf,keys := s.GetS3Config()
 
@@ -63,8 +63,8 @@ func (s *S3) Download(remote_path, local_path string) error {
     if err != nil {
         return err
     }
-    // stream to standard output
-    if _, err = utils.FileWrite(local_path, r, true, 504,504, "rwx"); err != nil {
+    // stream to file
+    if _, err = utils.FileWrite(local_path, r, uid,gid, perms); err != nil {
         return err
     }
     err = r.Close()

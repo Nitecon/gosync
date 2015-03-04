@@ -5,7 +5,9 @@ import (
     "strings"
     "os"
     "io"
+    "io/ioutil"
     //"log"
+    //"bytes"
 )
 
 func GetBasePath(listener string) string {
@@ -52,27 +54,36 @@ func ItemExists(path string) (bool, error) {
     return false, err
 }
 
-func FileWrite(path string, content io.Reader, overwrite bool, uid, gid int, perms string) (int64,error ){
-    if _, err := os.Stat(path); err == nil {
-        // We wipe the file as we need to replace with a new one
-        err := os.Remove(path)
-        if err != nil {
+func FileWrite(path string, r io.Reader, uid, gid int, perms string) (int64, error){
+
+    w, err := os.Create(path)
+    if err != nil {
+        if path == "" {
+            w = os.Stdout
+        } else {
             return 0, err
         }
-
     }
+    defer w.Close()
 
-    file, err := os.Create(path)
+    size, err := io.Copy(w, r)
+
 
     if err != nil {
         return 0, err
     }
-    defer file.Close()
-
-    size, err := io.Copy(file, content)
-
-    file.Chown(uid, gid)
-    //file.Chmod(perms)
 
     return size, err
+}
+
+func FileWriteBytes(path string, content []byte, overwrite bool, uid, gid int, perms string) (int64,error ){
+    /*buf := new(bytes.Buffer)
+    buf.ReadFrom(r)
+    content := buf.Bytes()*/
+    err := ioutil.WriteFile(path, content, 0644)
+    if err != nil {
+        return 0, err
+    }
+
+    return 0, err
 }

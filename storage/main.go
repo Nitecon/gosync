@@ -16,7 +16,7 @@ var (
 
 type Backupper interface {
 	Upload(local_path, remote_path string) error
-	Download(remote_path, local_path string) error
+	Download(remote_path, local_path string, uid, gid int, perms string) error
 	CheckMD5(local_path, remote_path string) bool
 }
 
@@ -36,9 +36,9 @@ func PutFile(local_path, listener string) error {
 	return storage.Upload(local_path, utils.GetRelativeBasePath(listener, local_path))
 }
 
-func GetFile(local_path, listener string) error {
+func GetFile(local_path, listener string, uid, gid int, perms string) error {
 	setStorageEngine(listener)
-	err := storage.Download(utils.GetRelativeBasePath(listener, local_path), local_path)
+	err := storage.Download(utils.GetRelativeBasePath(listener, local_path), local_path, uid, gid, perms)
     if err != nil{
         log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }

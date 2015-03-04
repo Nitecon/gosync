@@ -10,6 +10,7 @@ import (
 	"os"
     "time"
     "gosync/prototypes"
+    "fmt"
 )
 
 func getFileInDatabase(dbPath string, fsItems []fstools.FsItem) bool {
@@ -86,6 +87,7 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
     for _, item := range items {
         absPath := utils.GetAbsPath(listenerName, item.Path)
         itemMatch := getFileInDatabase(absPath, fsItems)
+        perms := fmt.Sprintf("%#o",item.Perms)
         if itemMatch {
             // Check to make sure it's not a directory as directories don't need to be uploaded
             if !item.IsDirectory {
@@ -95,9 +97,10 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
                     //@TODO: download the file and set corrected params for file.
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
-                        if !storage.GetNodeCopy(item, listenerName) {
+
+                        if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
                             // The server must be down so lets get it from S3
-                            storage.GetFile(absPath, listenerName)
+                            storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
                         }
                     }
                 }
@@ -114,10 +117,10 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
                     os.MkdirAll(absPath, 0775)
                 }
             }else{
-                if !storage.GetNodeCopy(item, listenerName) {
+                if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
                     log.Printf("Server is down for %s going to backup storage", listenerName)
                     // The server must be down so lets get it from S3
-                    storage.GetFile(absPath, listenerName)
+                    storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
                 }
             }
 

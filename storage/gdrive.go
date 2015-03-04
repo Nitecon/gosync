@@ -15,7 +15,7 @@ func (g *GDrive) Upload(local_path, remote_path string) error {
 	return nil
 }
 
-func (g *GDrive) Download(remote_path, local_path string) error {
+func (g *GDrive) Download(remote_path, local_path string, uid, gid int, perms string) error {
 	log.Println("Doing a download from GDrive")
 	return nil
 }

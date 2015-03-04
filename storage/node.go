@@ -9,9 +9,8 @@ import (
     "gosync/utils"
 )
 
-func GetNodeCopy(item prototypes.DataTable, listener string) bool {
+func GetNodeCopy(item prototypes.DataTable, listener string, uid, gid int, perms string) bool {
 	cfg := config.GetConfig()
-	lConf := cfg.Listeners[listener]
 	log.Println("Downloading file...")
 
 	rawURL := "http://" + item.HostUpdated + ":" + cfg.ServerConfig.ListenPort + "/" + listener + utils.GetRelativePath(listener, item.Path)
@@ -43,7 +42,7 @@ func GetNodeCopy(item prototypes.DataTable, listener string) bool {
 		log.Fatalf("File not found %s", rawURL)
 	}
 
-    size, fserr := utils.FileWrite(item.Path, resp.Body, true, lConf.Uid, lConf.Gid, item.Perms)
+    size, fserr := utils.FileWrite(item.Path, resp.Body, uid, gid, perms)
     if fserr != nil {
         log.Fatalf("Error occurred writing file (%s): %+v", fserr.Error(), fserr)
     }
