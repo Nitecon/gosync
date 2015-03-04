@@ -101,6 +101,13 @@ func (my *MySQLDB) CheckIn(table string) ([]prototypes.DataTable, error) {
 
 }
 
+func (my *MySQLDB) GetOne(listener, path string) (prototypes.DataTable, error){
+    dItem := prototypes.DataTable{}
+    query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms FROM %s where path='%s'", listener, path)
+    err := my.db.Get(&dItem, query)
+    return dItem, err
+}
+
 func (my *MySQLDB) CreateDB() {
 
 	log.Println("Database initialized")

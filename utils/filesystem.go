@@ -8,6 +8,7 @@ import (
     "io/ioutil"
     //"log"
     //"bytes"
+
 )
 
 func GetBasePath(listener string) string {
@@ -55,8 +56,7 @@ func ItemExists(path string) (bool, error) {
 }
 
 func FileWrite(path string, r io.Reader, uid, gid int, perms string) (int64, error){
-
-    w, err := os.Create(path)
+    w, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
     if err != nil {
         if path == "" {
             w = os.Stdout
