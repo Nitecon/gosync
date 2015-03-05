@@ -2,16 +2,13 @@ package storage
 
 import (
 	"github.com/rlmcpherson/s3gof3r"
-	"gosync/config"
-    //"gosync/utils"
-	"log"
+    "gosync/utils"
 	"os"
     "io"
-    "gosync/utils"
 )
 
 type S3 struct {
-	config   *config.Configuration
+	config   *utils.Configuration
 	bucket   *s3gof3r.Bucket
 	listener string
 }
@@ -52,7 +49,7 @@ func (s *S3) Upload(local_path, remote_path string) error {
 }
 
 func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string) error {
-    log.Printf("S3 Downloading %s -> %s", remote_path, local_path)
+    utils.WriteF("S3 Downloading %s -> %s", remote_path, local_path)
     conf,keys := s.GetS3Config()
 
     // Open bucket to put file into
@@ -71,13 +68,13 @@ func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string)
     if err != nil {
         return err
     }
-    log.Println(h) // print key header data
+    utils.WriteF("Header Data: %s",h) // print key header data
 
     return nil
 }
 
 func (s *S3) CheckMD5(local_path, remote_path string) bool {
-	log.Printf("S3 MD5 Check %s -> %s", local_path, remote_path)
+    utils.WriteF("S3 MD5 Check %s -> %s", local_path, remote_path)
 	return true
 }
 
@@ -88,13 +85,11 @@ func (s *S3) GetS3Config() (*s3gof3r.Config, *s3gof3r.Keys){
     keys.AccessKey = s.config.S3Config.Key
     keys.SecretKey = s.config.S3Config.Secret
     conf.Concurrency = 10
-    // Setting debug to true (last var below)
-    s3gof3r.SetLogger(os.Stderr, "", log.LstdFlags, true)
     return conf, keys
 }
 
 func getListener(dir string) string {
-	cfg := config.GetConfig()
+	cfg := utils.GetConfig()
 	var listener = ""
 	for lname, ldata := range cfg.Listeners {
 		if ldata.Directory == dir {

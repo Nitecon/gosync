@@ -4,11 +4,10 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"gosync/config"
-	"gosync/fstools"
-	"gosync/prototypes"
+
 	"gosync/utils"
-	"log"
+	"gosync/prototypes"
+
 	//"net/url"
 	"os"
 	"path"
@@ -16,11 +15,11 @@ import (
 )
 
 type MySQLDB struct {
-	config *config.Configuration
+	config *utils.Configuration
 	db     *sqlx.DB
 }
 
-func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
+func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	var isDirectory = 0
 	if item.IsDir {
 		isDirectory = 1
@@ -32,7 +31,7 @@ func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
 
 	err := my.db.Select(&keyExists, query)
 	if err != nil {
-		log.Printf("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
+        utils.WriteF("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
 	}
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
@@ -42,7 +41,7 @@ func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
 			isDirectory,
 			path.Base(item.Filename),
 			path.Dir(item.Filename),
-			fstools.GetMd5Checksum(item.Filename),
+			utils.GetMd5Checksum(item.Filename),
 			time.Now().UTC(),
 			item.Mtime,
 			item.Perms,
@@ -57,7 +56,7 @@ func (my *MySQLDB) Insert(table string, item fstools.FsItem) bool {
 			isDirectory,
 			path.Base(item.Filename),
 			path.Dir(item.Filename),
-			fstools.GetMd5Checksum(item.Filename),
+			utils.GetMd5Checksum(item.Filename),
 			time.Now().UTC(),
 			item.Mtime,
 			item.Perms,
@@ -95,7 +94,7 @@ func (my *MySQLDB) CheckIn(table string) ([]prototypes.DataTable, error) {
 	hostname, _ := os.Hostname()
 	dTable := []prototypes.DataTable{}
 	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
-	//log.Printf("Executing: %s", query)
+	//logs.WriteF("Executing: %s", query)
 	err := my.db.Select(&dTable, query)
 	return dTable, err
 
@@ -108,9 +107,13 @@ func (my *MySQLDB) GetOne(listener, path string) (prototypes.DataTable, error){
     return dItem, err
 }
 
+func (my *MySQLDB) Remove(table string, item utils.FsItem) bool{
+    return true
+}
+
 func (my *MySQLDB) CreateDB() {
 
-	log.Println("Database initialized")
+    utils.WriteLn("Database initialized")
 	for key, _ := range my.config.Listeners {
 		my.db.MustExec(createTableQuery(key))
 	}
@@ -124,7 +127,7 @@ func (my *MySQLDB) Close() error {
 func (my *MySQLDB) initDB() {
 	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
 	if err != nil {
-		log.Println(err.Error())
+        utils.WriteLn(err.Error())
 	}
 	my.db = tempdb
 }
@@ -147,7 +150,7 @@ func checkExists(db *sqlx.DB, table, key, val string) bool {
 
 func checkErr(err error, msg string) {
 	if err != nil {
-		log.Fatalln(msg, err)
+        utils.WriteF(msg, err)
 	}
 }
 

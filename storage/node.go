@@ -1,17 +1,16 @@
 package storage
 
 import (
-	"gosync/config"
 	"gosync/prototypes"
-	"log"
 	"net/http"
 	"net/url"
     "gosync/utils"
+    "runtime"
 )
 
 func GetNodeCopy(item prototypes.DataTable, listener string, uid, gid int, perms string) bool {
-	cfg := config.GetConfig()
-	log.Println("Downloading file...")
+	cfg := utils.GetConfig()
+    utils.WriteLn("Downloading file...")
 
 	rawURL := "http://" + item.HostUpdated + ":" + cfg.ServerConfig.ListenPort + "/" + listener + utils.GetRelativePath(listener, item.Path)
 
@@ -30,24 +29,19 @@ func GetNodeCopy(item prototypes.DataTable, listener string, uid, gid int, perms
 
 	resp, err := check.Get(rawURL) // add a filter to check redirect
 
-	if err != nil {
-		log.Println(err)
-		return false
-
-	}
-	defer resp.Body.Close()
-	log.Println(resp.Status)
+	utils.Check("Unable to download from: "+rawURL, 404, err)
+	runtime.Goexit()
+    defer resp.Body.Close()
+    utils.WriteLn(resp.Status)
 
 	if resp.Status == "404" {
-		log.Fatalf("File not found %s", rawURL)
+        utils.WriteF("File not found %s", rawURL)
 	}
 
     size, fserr := utils.FileWrite(item.Path, resp.Body, uid, gid, perms)
-    if fserr != nil {
-        log.Fatalf("Error occurred writing file (%s): %+v", fserr.Error(), fserr)
-    }
+    utils.Check("Cannot write file...", 500, fserr)
 
 
-	log.Printf("%s with %v bytes downloaded", item.Path, size)
+    utils.WriteF("%s with %v bytes downloaded", item.Path, size)
 	return true
 }

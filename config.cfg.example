@@ -1,9 +1,15 @@
 [ServerConfig]
-# Port for the file server to listen on that other nodes can connect to
+# Port for the file server to listen on
 listen_port = "8080"
-# Rescan time in seconds, full rescan of the filesystem in x seconds
+# Rescan time in seconds
 rescan = 30
-storagetype=s3
+# The filesystem storage to be used
+storagetype="s3"
+# The location for the log file (can be stdout or a path to file)
+log_location="stdout"
+# Log levels are (0 = debug, 1 = info, 2 = warning, 3 = error, 4 = fatal)
+# The lower the log level the more information is printed (level 4 fatal causes the application to exit)
+log_level=0
 
 [StorageS3]
 key=""
@@ -33,7 +39,7 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
 	storagetype="s3"
 	bucket="fssync"
 	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
-	basepath="/fssync"
+	basepath="/fssync/MonitorMe1"
 
 	[listeners.Bootstrapped]
 	uid = 504
@@ -44,4 +50,4 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
 	storage="s3"
 	bucket="fssync"
 	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
-	basepath="/fssync"
+	basepath="/fssync/Bootstrapped"

@@ -6,24 +6,25 @@ package main
 
 import (
 	"flag"
-	"gosync/config"
+
     "gosync/replicator"
 	"gosync/fswatcher"
-	"log"
+
 	"net/http"
+    "gosync/utils"
 	"os"
 )
 
 
-func StartWebFileServer(cfg *config.Configuration) {
-	log.Println("Starting web listener")
+func StartWebFileServer(cfg *utils.Configuration) {
+    utils.WriteLn("Starting web listener")
 	var listenPort = ":" + cfg.ServerConfig.ListenPort
 	for name, item := range cfg.Listeners {
 		var section = "/" + name + "/"
-		log.Println("Adding section listener: " + section + "| Serving directory: " + item.Directory)
+        utils.WriteLn("Adding section listener: " + section + "| Serving directory: " + item.Directory)
 		http.Handle(section, http.StripPrefix(section, http.FileServer(http.Dir(item.Directory))))
 	}
-	log.Printf("%v", http.ListenAndServe(listenPort, nil))
+    utils.WriteF("%v", http.ListenAndServe(listenPort, nil))
 }
 
 func main() {
@@ -31,19 +32,19 @@ func main() {
 	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg",
     "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
-	if _, err := os.Stat(ConfigFile); err == nil {
-		log.Printf("Using %s as config file", ConfigFile)
-		config.ReadConfigFromFile(ConfigFile)
-		cfg := config.GetConfig()
+	if _, err := os.Stat(ConfigFile); !utils.Check("No config file specified",404,err) {
+        //utils.WriteF("Using %s as config file", ConfigFile)
+        utils.ReadConfigFromFile(ConfigFile)
+		cfg := utils.GetConfig()
         replicator.InitialSync()
 		for _, item := range cfg.Listeners {
-			log.Println("Working with: " + item.Directory)
+            utils.WriteLn("Working with: " + item.Directory)
 			go replicator.CheckIn(item.Directory)
 			go fswatcher.SysPathWatcher(item.Directory)
 		}
 		StartWebFileServer(cfg)
 	} else {
-		log.Fatalf("Config file specified does not exist (%s)", ConfigFile)
+        utils.WriteF("Config file specified does not exist (%s)", ConfigFile)
 
 	}
 

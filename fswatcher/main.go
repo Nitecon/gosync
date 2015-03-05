@@ -3,18 +3,14 @@ package fswatcher
 import (
 	"gopkg.in/fsnotify.v1"
 	"gosync/dbsync"
-	"gosync/fstools"
-	"gosync/storage"
 	"gosync/utils"
-	"log"
+	"gosync/storage"
 )
 
 func SysPathWatcher(path string) {
-	log.Println("Starting new watcher for:", path)
+    utils.WriteF("Starting new watcher for:", path)
 	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
+	utils.Check("Cannot create new watcher for: "+path, 400, err)
 	defer watcher.Close()
 	done := make(chan bool)
 	go func() {
@@ -22,71 +18,69 @@ func SysPathWatcher(path string) {
 		for {
 			select {
 			case event := <-watcher.Events:
-				//log.Println("event:", event)
+				//logs.WriteLn("event:", event)
 				if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					log.Println("Chmod occurred on:", event.Name)
+                    utils.WriteF("Chmod occurred on:", event.Name)
 					runFileUpdate(path, event.Name, "chmod")
 				}
 				if event.Op&fsnotify.Rename == fsnotify.Rename {
-					log.Println("Rename occurred on:", event.Name)
+                    utils.WriteF("Rename occurred on:", event.Name)
 					runFileUpdate(path, event.Name, "rename")
 				}
 				if event.Op&fsnotify.Create == fsnotify.Create {
-					log.Println("New File:", event.Name)
+                    utils.WriteF("New File:", event.Name)
 					runFileUpdate(path, event.Name, "create")
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("modified file:", event.Name)
+                    utils.WriteF("modified file:", event.Name)
 					runFileUpdate(path, event.Name, "write")
 				}
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
-					log.Println("Removed File: ", event.Name)
+                    utils.WriteF("Removed File: ", event.Name)
 					runFileUpdate(path, event.Name, "remove")
 				}
 			case err := <-watcher.Errors:
-				log.Println("error:", err)
+                utils.WriteF("error:", err)
 			}
 		}
 
 	}()
 	err = watcher.Add(path)
-	if err != nil {
-		log.Fatal(err)
-	}
+    utils.Check("Cannot add watcher to: "+path, 400, err)
 	<-done
 }
 
 func runFileUpdate(base_path, path, operation string) bool {
 	listener := utils.GetListenerFromDir(base_path)
 	rel_path := utils.GetRelativePath(listener, path)
-	fsItem, err := fstools.GetFileInfo(path)
+	fsItem, err := utils.GetFileInfo(path)
 
 	if err != nil {
-		log.Fatalf("Error getting file details for %s: %+v", path, err)
+        utils.WriteF("Error getting file details for %s: %+v", path, err)
 	}
 
 	dbItem, err := dbsync.GetOne(base_path, rel_path)
 	if err != nil {
-		log.Fatal("Error occurred getting file row (%s): %+v", err.Error(), err)
+        utils.WriteF("Error occurred getting file row (%s): %+v", err.Error(), err)
 	}
 
 	switch operation {
 	/*case "chmod:":
 	  if dbItem.Perms != 0664{
-	      log.Println("Perms don't match")
+	      logs.WriteLn("Perms don't match")
 	  }*/
 	case "create":
 		if dbItem.Checksum != fsItem.Checksum {
-			log.Printf("Creating:->")
+			utils.WriteF("Creating:->")
 			dbsync.Insert(listener, fsItem)
-			log.Printf("Putting in storage:->")
+            utils.WriteF("Putting in storage:->")
 			storage.PutFile(path, listener)
 		}
 	case "write":
 		if dbItem.Checksum != fsItem.Checksum {
-			log.Printf("Writing:->")
+            utils.WriteF("Writing:->")
 			dbsync.Insert(listener, fsItem)
-			log.Printf("Putting in storage:->")
+            utils.WriteF("Putting in storage:->")
 			storage.PutFile(path, listener)
 		}
     case "remove":

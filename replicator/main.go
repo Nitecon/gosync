@@ -1,19 +1,16 @@
 package replicator
 
 import (
-	"gosync/config"
 	"gosync/dbsync"
-	"gosync/fstools"
 	"gosync/storage"
 	"gosync/utils"
-	"log"
 	"os"
     "time"
     "gosync/prototypes"
     "fmt"
 )
 
-func getFileInDatabase(dbPath string, fsItems []fstools.FsItem) bool {
+func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
 	for _, fsitem := range fsItems {
 		if fsitem.Filename == dbPath {
 			return true
@@ -23,11 +20,11 @@ func getFileInDatabase(dbPath string, fsItems []fstools.FsItem) bool {
 }
 
 func InitialSync() {
-	cfg := config.GetConfig()
+	cfg := utils.GetConfig()
 
-	log.Println("Verifying DB Tables")
+    utils.WriteLn("Verifying DB Tables")
 	dbsync.CreateDB()
-	log.Println("Initial sync starting...")
+    utils.WriteLn("Initial sync starting...")
 
 	for key, listener := range cfg.Listeners {
 		// First check to see if the table is empty and do a full import false == not empty
@@ -37,11 +34,11 @@ func InitialSync() {
             handleDataChanges(items, listener, key)
 		} else {
 			// Database is empty so lets import
-			fsItems := fstools.ListFilesInDir(listener.Directory)
+			fsItems := utils.ListFilesInDir(listener.Directory)
 			for _, item := range fsItems {
 				success := dbsync.Insert(key, item)
 				if success != true {
-					log.Printf("An error occurred inserting %x to database", item)
+                    utils.WriteF("An error occurred inserting %x to database", item)
 				}
 				if !item.IsDir {
 					storage.PutFile(item.Filename, key)
@@ -52,25 +49,25 @@ func InitialSync() {
 
 	}
 
-	log.Println("Initial sync completed...")
+    utils.WriteLn("Initial sync completed...")
 }
 
 
 func CheckIn(path string){
-    log.Println("Starting db checking background script: " + path)
+    utils.WriteLn("Starting db checking background script: " + path)
     ticker := time.NewTicker(10 * time.Second)
     quit := make(chan struct{})
     go func() {
         for {
             select {
             case <-ticker.C:
-                log.Println("Checking all changed stuff in db for: " + path)
+                utils.WriteLn("Checking all changed stuff in db for: " + path)
                 listener := utils.GetListenerFromDir(path)
                 items, err := dbsync.CheckIn(listener)
                 if err != nil{
-                    log.Printf("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
+                    utils.WriteF("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
                 }
-                cfg := config.GetConfig()
+                cfg := utils.GetConfig()
                 handleDataChanges(items, cfg.Listeners[listener], listener)
             // @TODO: check that db knows Im alive.
             case <-quit:
@@ -81,9 +78,9 @@ func CheckIn(path string){
     }()
 }
 
-func handleDataChanges(items []prototypes.DataTable, listener config.Listener, listenerName string){
+func handleDataChanges(items []prototypes.DataTable, listener utils.Listener, listenerName string){
     // Walking the directory to get files.
-    fsItems := fstools.ListFilesInDir(listener.Directory)
+    fsItems := utils.ListFilesInDir(listener.Directory)
     for _, item := range items {
         absPath := utils.GetAbsPath(listenerName, item.Path)
         itemMatch := getFileInDatabase(absPath, fsItems)
@@ -91,9 +88,9 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
         if itemMatch {
             // Check to make sure it's not a directory as directories don't need to be uploaded
             if !item.IsDirectory {
-                fileMD5 := fstools.GetMd5Checksum(absPath)
+                fileMD5 := utils.GetMd5Checksum(absPath)
                 if fileMD5 != item.Checksum {
-                    log.Printf("Found %s in db(%s) and fs(%s), NOT matching md5...", absPath, item.Checksum, fileMD5)
+                    utils.WriteF("Found %s in db(%s) and fs(%s), NOT matching md5...", absPath, item.Checksum, fileMD5)
                     //@TODO: download the file and set corrected params for file.
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
@@ -109,7 +106,7 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
 
         } else {
             // Item doesn't exist locally but exists in DB so restore it
-            log.Printf("Item Deleted Locally: %s restoring from DB marker", absPath)
+            utils.WriteF("Item Deleted Locally: %s restoring from DB marker", absPath)
 
             if item.IsDirectory{
                 dirExists,_ := utils.ItemExists(absPath)
@@ -118,7 +115,7 @@ func handleDataChanges(items []prototypes.DataTable, listener config.Listener, l
                 }
             }else{
                 if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
-                    log.Printf("Server is down for %s going to backup storage", listenerName)
+                    utils.WriteF("Server is down for %s going to backup storage", listenerName)
                     // The server must be down so lets get it from S3
                     storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
                 }

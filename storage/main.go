@@ -1,10 +1,9 @@
 package storage
 
 import (
-	"gosync/config"
+
     "gosync/utils"
 
-    "log"
 
 )
 
@@ -21,7 +20,7 @@ type Backupper interface {
 }
 
 func setStorageEngine(listener string) {
-	cfg := config.GetConfig()
+	cfg := utils.GetConfig()
 	var engine = cfg.Listeners[listener].StorageType
 	switch engine {
 	case "gdrive":
@@ -40,7 +39,7 @@ func GetFile(local_path, listener string, uid, gid int, perms string) error {
 	setStorageEngine(listener)
 	err := storage.Download(utils.GetRelativeBasePath(listener, local_path), local_path, uid, gid, perms)
     if err != nil{
-        log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
+        utils.WriteF("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }
     return err
 }
