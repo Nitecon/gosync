@@ -132,6 +132,11 @@ func GetListenerFromDir(dir string) string {
     return listener
 }
 
+func GetSystemHostname() string{
+    hostname, _ := os.Hostname()
+    return hostname
+}
+
 // exists returns whether the given file or directory exists or not
 func ItemExists(path string) (bool, error) {
     _, err := os.Stat(path)

@@ -44,7 +44,7 @@ func GetFile(local_path, listener string, uid, gid int, perms string) error {
     return err
 }
 
-func CheckFileMD5(local_path, listener string) bool {
+func ErrorCheckFileMD5(local_path, listener string) bool {
 	setStorageEngine(listener)
 	return storage.CheckMD5(local_path, utils.GetRelativeBasePath(listener, local_path))
 }

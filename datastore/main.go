@@ -1,4 +1,4 @@
-package dbsync
+package datastore
 
 import (
 	"gosync/utils"

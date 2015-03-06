@@ -1,4 +1,4 @@
-package dbsync
+package datastore
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
 		rowId := fmt.Sprintf("%d", keyExists[0].Id)
-		tx.MustExec("UPDATE "+table+" SET path=?, is_dir=?, filename=?, directory=?, checksum=?, atime=?, mtime=?, perms=?, host_updated=?, last_update=? WHERE id='"+rowId+"'",
+		tx.MustExec("UPDATE "+table+" SET path=?, is_dir=?, filename=?, directory=?, checksum=?, atime=?, mtime=?, perms=?, host_updated=?, host_ips=?, last_update=? WHERE id='"+rowId+"'",
 			utils.GetRelativePath(table, item.Filename),
 			isDirectory,
 			path.Base(item.Filename),
@@ -42,12 +42,13 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			item.Mtime,
 			item.Perms,
 			hostname,
+			utils.GetLocalIp(),
 			time.Now().UTC(),
 		)
 		err = tx.Commit()
         utils.Check(err, 500, "Error updating data...")
 	} else {
-		tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
+		tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, host_ips, last_update) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
 			utils.GetRelativePath(table, item.Filename),
 			isDirectory,
 			path.Base(item.Filename),
@@ -57,6 +58,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			item.Mtime,
 			item.Perms,
 			hostname,
+            utils.GetLocalIp(),
 			time.Now().UTC())
 		err = tx.Commit()
 		utils.Check(err, 500, "Error inserting data...")
@@ -67,7 +69,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 func (my *MySQLDB) CheckEmpty(table string) bool {
 	var count int
 	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
-	utils.CheckF(err, 500, "Error counting items in table (%s)", table)
+	utils.ErrorCheckF(err, 500, "Error counting items in table (%s)", table)
 
 	var isEmpty = true
 	if count > 0 {
@@ -78,16 +80,16 @@ func (my *MySQLDB) CheckEmpty(table string) bool {
 
 func (my *MySQLDB) FetchAll(table string) []utils.DataTable {
 	dTable := []utils.DataTable{}
-	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY is_dir DESC"
+	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated, host_ips FROM " + table + " ORDER BY is_dir DESC"
 	err := my.db.Select(&dTable, query)
-    utils.CheckF(err, 500, "Could not fetch items from database for %s", table)
+    utils.ErrorCheckF(err, 500, "Could not fetch items from database for %s", table)
 	return dTable
 }
 
 func (my *MySQLDB) CheckIn(table string) ([]utils.DataTable, error) {
 	hostname, _ := os.Hostname()
 	dTable := []utils.DataTable{}
-	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
+	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated, host_ips FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
 	err := my.db.Select(&dTable, query)
 	return dTable, err
 
@@ -95,7 +97,7 @@ func (my *MySQLDB) CheckIn(table string) ([]utils.DataTable, error) {
 
 func (my *MySQLDB) GetOne(listener, path string) (utils.DataTable, error){
     dItem := utils.DataTable{}
-    query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms FROM %s where path='%s'", listener, path)
+    query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_ips FROM %s where path='%s'", listener, path)
     err := my.db.Get(&dItem, query)
     return dItem, err
 }
@@ -137,6 +139,7 @@ func createTableQuery(table string) string {
   mtime timestamp NOT NULL,
   perms varchar(12) COLLATE utf8_unicode_ci NOT NULL,
   host_updated varchar(255) COLLATE utf8_unicode_ci NOT NULL,
+  host_ips varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   last_update timestamp default now() NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;

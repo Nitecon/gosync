@@ -1,12 +1,13 @@
 package replicator
 
 import (
-	"gosync/dbsync"
+    "gosync/datastore"
 	"gosync/storage"
 	"gosync/utils"
 	"os"
     "time"
     "fmt"
+    "gosync/nodeinfo"
 )
 
 func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
@@ -22,20 +23,20 @@ func InitialSync() {
 	cfg := utils.GetConfig()
 
     utils.WriteLn("Verifying DB Tables")
-	dbsync.CreateDB()
+	datastore.CreateDB()
     utils.WriteLn("Initial sync starting...")
 
 	for key, listener := range cfg.Listeners {
 		// First check to see if the table is empty and do a full import false == not empty
-		if dbsync.CheckEmpty(key) == false {
+		if datastore.CheckEmpty(key) == false {
 			// Database is not empty so pull the updates and match locally
-			items := dbsync.FetchAll(key)
+			items := datastore.FetchAll(key)
             handleDataChanges(items, listener, key)
 		} else {
 			// Database is empty so lets import
 			fsItems := utils.ListFilesInDir(listener.Directory)
 			for _, item := range fsItems {
-				success := dbsync.Insert(key, item)
+				success := datastore.Insert(key, item)
 				if success != true {
                     utils.LogWriteF("An error occurred inserting %x to database", item)
 				}
@@ -60,9 +61,10 @@ func CheckIn(path string){
         for {
             select {
             case <-ticker.C:
+                nodeinfo.UpdateConnection()
                 utils.WriteLn("Checking all changed stuff in db for: " + path)
                 listener := utils.GetListenerFromDir(path)
-                items, err := dbsync.CheckIn(listener)
+                items, err := datastore.CheckIn(listener)
                 if err != nil{
                     utils.LogWriteF("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
                 }

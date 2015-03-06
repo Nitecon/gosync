@@ -5,7 +5,7 @@ import (
     "io/ioutil"
     "net"
     "sync"
-    "os"
+    "strings"
 )
 
 var (
@@ -34,27 +34,19 @@ func GetConfig() *Configuration {
     return config
 }
 
-func GetLocalIp() {
-    LogWriteF("Ip address: %s", net.LookupIP(os.Hostname()))
-    ifaces, err := net.Interfaces()
+func GetLocalIp() string {
+    //LogWriteF("Ip address: %v",ip)
+    addrs, err := net.InterfaceAddrs()
     if err != nil {
-        LogWriteF("Error accessing network interfaces: %v", err.Error())
+        Check(err, 500, "No network interfaces found")
     }
-    // handle err
-    for _, i := range ifaces {
-        addrs, err := i.Addrs()
-        if err != nil {
-            LogWriteF("Error occurred getting local IP address: %v", err.Error())
-        }
-        // handle err
-        for _, addr := range addrs {
-            LogWriteF("%s",addr.Network())
-            LogWriteF("%s",addr.String())
-            /*switch v := addr.(type) {
-            case *net.IPAddr:
-                // process IP address
-            }*/
-
+    var ips []string
+    for _, a := range addrs {
+        if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+            if ipnet.IP.To4() != nil {
+                ips = append(ips, ipnet.IP.String())
+            }
         }
     }
+    return strings.Join(ips, ",")
 }

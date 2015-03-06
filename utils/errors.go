@@ -24,7 +24,7 @@ func Check(err error, code int, msg string) bool{
     return false
 }
 
-func CheckF(err error, code int, format string, a ...interface{}) bool{
+func ErrorCheckF(err error, code int, format string, a ...interface{}) bool{
     appErr := AppError{}
     if err != nil{
         appErr.Error = err

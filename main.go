@@ -6,7 +6,7 @@ package main
 
 import (
 	"flag"
-
+    "gosync/nodeinfo"
     "gosync/replicator"
 	"gosync/fswatcher"
 
@@ -17,7 +17,10 @@ import (
 
 
 func StartWebFileServer(cfg *utils.Configuration) {
+    nodeinfo.Initialize()
     utils.WriteLn("Starting web listener")
+    nodeinfo.SetAlive()
+
 	var listenPort = ":" + cfg.ServerConfig.ListenPort
 	for name, item := range cfg.Listeners {
 		var section = "/" + name + "/"
@@ -35,7 +38,6 @@ func main() {
 	if _, err := os.Stat(ConfigFile); !utils.Check(err, 404, "No config file specified") {
         utils.ReadConfigFromFile(ConfigFile)
 		cfg := utils.GetConfig()
-        utils.GetLocalIp()
         replicator.InitialSync()
 		for _, item := range cfg.Listeners {
             utils.WriteLn("Working with: " + item.Directory)
@@ -45,7 +47,6 @@ func main() {
 		StartWebFileServer(cfg)
 	} else {
         utils.LogWriteF("Config file specified does not exist (%s)", ConfigFile)
-
 	}
 
 }
