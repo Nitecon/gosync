@@ -16,6 +16,8 @@ type MySQLDB struct {
 }
 
 func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
+    my.db = my.initDB()
+    defer my.db.Close()
 	var isDirectory = 0
 	if item.IsDir {
 		isDirectory = 1
@@ -67,6 +69,8 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 }
 
 func (my *MySQLDB) UpdateHost(table, path string){
+    my.db = my.initDB()
+    defer my.db.Close()
     hostname, _ := os.Hostname()
     tx := my.db.MustBegin()
     tx.MustExec("UPDATE "+table+" SET host_updated=? WHERE path='"+path+"'", hostname )
@@ -75,6 +79,8 @@ func (my *MySQLDB) UpdateHost(table, path string){
 }
 
 func (my *MySQLDB) CheckEmpty(table string) bool {
+    my.db = my.initDB()
+    defer my.db.Close()
 	var count int
 	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
 	utils.ErrorCheckF(err, 500, "Error counting items in table (%s)", table)
@@ -87,6 +93,8 @@ func (my *MySQLDB) CheckEmpty(table string) bool {
 }
 
 func (my *MySQLDB) FetchAll(table string) []utils.DataTable {
+    my.db = my.initDB()
+    defer my.db.Close()
 	dTable := []utils.DataTable{}
 	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated, host_ips FROM " + table + " ORDER BY is_dir DESC"
 	err := my.db.Select(&dTable, query)
@@ -95,6 +103,8 @@ func (my *MySQLDB) FetchAll(table string) []utils.DataTable {
 }
 
 func (my *MySQLDB) CheckIn(table string) ([]utils.DataTable, error) {
+    my.db = my.initDB()
+    defer my.db.Close()
 	hostname, _ := os.Hostname()
 	dTable := []utils.DataTable{}
 	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated, host_ips FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
@@ -104,6 +114,8 @@ func (my *MySQLDB) CheckIn(table string) ([]utils.DataTable, error) {
 }
 
 func (my *MySQLDB) GetOne(listener, path string) (utils.DataTable, error){
+    my.db = my.initDB()
+    defer my.db.Close()
     dItem := utils.DataTable{}
     query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_ips FROM %s where path='%s'", listener, path)
     err := my.db.Get(&dItem, query)
@@ -111,10 +123,14 @@ func (my *MySQLDB) GetOne(listener, path string) (utils.DataTable, error){
 }
 
 func (my *MySQLDB) Remove(table string, item utils.FsItem) bool{
+    my.db = my.initDB()
+    defer my.db.Close()
     return true
 }
 
 func (my *MySQLDB) CreateDB() {
+    my.db = my.initDB()
+    defer my.db.Close()
     utils.WriteLn("Database initialized")
 	for key, _ := range my.config.Listeners {
 		my.db.MustExec(createTableQuery(key))
@@ -122,16 +138,12 @@ func (my *MySQLDB) CreateDB() {
 
 }
 
-func (my *MySQLDB) Close() error {
-	return my.db.Close()
-}
-
-func (my *MySQLDB) initDB() {
+func (my *MySQLDB) initDB() *sqlx.DB{
 	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
 	if err != nil {
         utils.WriteLn(err.Error())
 	}
-	my.db = tempdb
+	return tempdb
 }
 
 

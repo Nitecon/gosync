@@ -91,7 +91,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
             if !item.IsDirectory {
                 fileMD5 := utils.GetMd5Checksum(absPath)
                 if fileMD5 != item.Checksum {
-                    utils.LogWriteF("Found %s in db(%s) and fs(%s), NOT matching md5...", absPath, item.Checksum, fileMD5)
+                    utils.WriteLn("Processing modified file: " + absPath)
                     //@TODO: download the file and set corrected params for file.
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
@@ -108,7 +108,6 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
         } else {
             // Item doesn't exist locally but exists in DB so restore it
             utils.LogWriteF("Item Deleted Locally: %s restoring from DB marker", absPath)
-
             if item.IsDirectory{
                 dirExists,_ := utils.ItemExists(absPath)
                 if !dirExists{
