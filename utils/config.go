@@ -6,6 +6,7 @@ import (
     "net"
     "sync"
     "strings"
+
 )
 
 var (
@@ -35,11 +36,11 @@ func GetConfig() *Configuration {
 }
 
 func GetLocalIp() string {
-    //LogWriteF("Ip address: %v",ip)
     addrs, err := net.InterfaceAddrs()
     if err != nil {
-        Check(err, 500, "No network interfaces found")
+        ErrorCheckF(err, 500, "No network interfaces found")
     }
+    //log.Printf("Addresses: %+v", addrs)
     var ips []string
     for _, a := range addrs {
         if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {

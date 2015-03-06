@@ -160,7 +160,7 @@ func createTableQuery(table string) string {
   perms varchar(12) COLLATE utf8_unicode_ci NOT NULL,
   host_updated varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   host_ips varchar(255) COLLATE utf8_unicode_ci NOT NULL,
-  last_update timestamp default now() NOT NULL,
+  last_update timestamp NOT NULL,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 `, table)

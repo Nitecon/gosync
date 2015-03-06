@@ -95,7 +95,6 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
                     //@TODO: download the file and set corrected params for file.
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
-
                         if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
                             // The server must be down so lets get it from S3
                             storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
