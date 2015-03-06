@@ -5,6 +5,8 @@ import (
     "gosync/utils"
 	"os"
     "io"
+    "gosync/datastore"
+    "strings"
 )
 
 type S3 struct {
@@ -48,15 +50,15 @@ func (s *S3) Upload(local_path, remote_path string) error {
 
 }
 
-func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string) error {
-    utils.LogWriteF("S3 Downloading %s -> %s", remote_path, local_path)
+func (s *S3) Download(remote_path, local_path string,uid, gid int, perms, listener string) error {
+    utils.LogWriteF("S3 Downloading %s", local_path)
     conf,keys := s.GetS3Config()
 
     // Open bucket to put file into
     s3 := s3gof3r.New("", *keys)
     b := s3.Bucket(s.config.Listeners[s.listener].Bucket)
 
-    r, h, err := b.GetReader(remote_path, conf)
+    r, _, err := b.GetReader(remote_path, conf)
     if err != nil {
         return err
     }
@@ -68,9 +70,10 @@ func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string)
     if err != nil {
         return err
     }
-    utils.LogWriteF("Header Data: %s",h) // print key header data
+    basePath := s.config.Listeners[listener].BasePath
+    datastore.UpdateHost(listener, strings.TrimLeft(local_path, basePath))
 
-    return nil
+    return err
 }
 
 func (s *S3) CheckMD5(local_path, remote_path string) bool {

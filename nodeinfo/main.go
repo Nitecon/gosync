@@ -10,7 +10,7 @@ var (
 
 type NodeStore interface {
     Insert() bool
-    GetAll() (utils.NodeTable, error)
+    GetAll() []utils.NodeTable
     CreateDB()
     Update() bool
     Close(deadHost string) // call this method when you want to close the connection
@@ -50,7 +50,7 @@ func CloseConnection(deadHost string) {
     nodeStore.Close(deadHost)
 }
 
-func GetNodes() (utils.NodeTable, error){
+func GetNodes() []utils.NodeTable{
     setdbstoreEngine()
     return nodeStore.GetAll()
 }

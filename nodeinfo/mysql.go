@@ -6,7 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"gosync/utils"
 	"time"
-    "pkg/os"
+    "os"
 )
 
 var (
@@ -34,11 +34,13 @@ func (my *MySQLNodeDB) Insert() bool {
 	return true
 }
 
-func (my *MySQLNodeDB) GetAll() (utils.NodeTable, error) {
-	nodeData := utils.NodeTable{}
-    query := "select id, hostname, host_ips, connected_on, last_update from "+table+" where hostname != '"+utils.GetSystemHostname()+"' ORDER BY last_update DESC;"
-    err := my.db.Select(&nodeData, query)
-	return nodeData, err
+func (my *MySQLNodeDB) GetAll() ([]utils.NodeTable) {
+	nData := []utils.NodeTable{}
+    hostname, _ := os.Hostname()
+    query := "select id, hostname, host_ips, connected_on, last_update from "+table+" where hostname != '"+hostname+"' ORDER BY last_update DESC;"
+    err := my.db.Select(&nData, query)
+    utils.ErrorCheckF(err, 500, "Could not fetch nodes from database on table %s, for hostname: %s", table, hostname)
+	return nData
 }
 
 func (my *MySQLNodeDB) Update() bool {

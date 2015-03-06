@@ -15,6 +15,7 @@ type Datastore interface {
 	FetchAll(table string) []utils.DataTable
 	CheckIn(listener string) ([]utils.DataTable, error)
     GetOne(listener, path string) (utils.DataTable, error)
+    UpdateHost(table, path string)
 	CreateDB()
 	Close() error // call this method when you want to close the connection
 	initDB()
@@ -26,12 +27,13 @@ func setdbstoreEngine() {
 	switch engine {
 	case "mysql":
 		dbstore = &MySQLDB{config: cfg}
-		dbstore.initDB()
 	}
 }
 
 func Insert(table string, item utils.FsItem) bool {
 	setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
 	return dbstore.Insert(table, item)
 }
 
@@ -48,10 +50,22 @@ func CheckEmpty(table string) bool {
 
 func FetchAll(table string) []utils.DataTable {
 	setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
 	return dbstore.FetchAll(table)
 }
 
+func UpdateHost(table, path string){
+    setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
+    dbstore.UpdateHost(table, path)
+}
+
 func CheckIn(listener string) ([]utils.DataTable, error) {
+    setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
     utils.WriteLn("Starting db checking background script for: " + listener)
 	data,err := dbstore.CheckIn(listener)
     return data, err
@@ -60,6 +74,8 @@ func CheckIn(listener string) ([]utils.DataTable, error) {
 
 func GetOne(basepath, path string) (utils.DataTable, error){
     setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
     listener := utils.GetListenerFromDir(basepath)
     dbitem, err := dbstore.GetOne(listener, path)
     return dbitem, err
@@ -67,10 +83,14 @@ func GetOne(basepath, path string) (utils.DataTable, error){
 
 func Remove(table string, item utils.FsItem) bool {
     setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
     return dbstore.Remove(table, item)
 }
 
 func CreateDB() {
-	setdbstoreEngine()
+    setdbstoreEngine()
+    dbstore.initDB()
+    defer dbstore.Close()
 	dbstore.CreateDB()
 }

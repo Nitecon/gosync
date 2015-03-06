@@ -66,6 +66,14 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	return true
 }
 
+func (my *MySQLDB) UpdateHost(table, path string){
+    hostname, _ := os.Hostname()
+    tx := my.db.MustBegin()
+    tx.MustExec("UPDATE "+table+" SET host_updated=? WHERE path='"+path+"'", hostname )
+    err := tx.Commit()
+    utils.Check(err, 500, "Error updating host for path : "+ path)
+}
+
 func (my *MySQLDB) CheckEmpty(table string) bool {
 	var count int
 	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
