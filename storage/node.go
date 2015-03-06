@@ -25,11 +25,11 @@ func GetNodeCopy(item utils.DataTable, listener string, uid, gid int, perms stri
 	if !utils.CheckF(err, 404, "Do not allow redirects: %s ", rawURL){
         defer resp.Body.Close()
         if resp.Status == "404" {
-            utils.WriteF("File not found: %s", rawURL)
+            utils.LogWriteF("File not found: %s", rawURL)
         }
         size, err := utils.FileWrite(item.Path, resp.Body, uid, gid, perms)
         utils.CheckF(err, 500, "Cannot write file: %s", item.Path)
-        utils.WriteF("%s with %v bytes downloaded", item.Path, size)
+        utils.LogWriteF("%s with %v bytes downloaded", item.Path, size)
         return true
     }
     return false

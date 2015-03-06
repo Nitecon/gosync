@@ -19,7 +19,7 @@ func WriteLn(msg string) {
     log.Printf("%s", msg)
 }
 
-func WriteF(format string, a ...interface{}) {
+func LogWriteF(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a)
     cfg := GetConfig()
 	if cfg.ServerConfig.LogLocation != "stdout" {

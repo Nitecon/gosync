@@ -27,7 +27,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 
 	err := my.db.Select(&keyExists, query)
 	if err != nil {
-        utils.WriteF("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
+        utils.LogWriteF("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
 	}
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
@@ -100,7 +100,7 @@ func (my *MySQLDB) GetOne(listener, path string) (utils.DataTable, error){
     return dItem, err
 }
 
-func (my *MySQLDB) Remove(table string, relPath string) bool{
+func (my *MySQLDB) Remove(table string, item utils.FsItem) bool{
     return true
 }
 

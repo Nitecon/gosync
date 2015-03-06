@@ -5,6 +5,7 @@ import (
     "io/ioutil"
     "net"
     "sync"
+    "os"
 )
 
 var (
@@ -34,19 +35,21 @@ func GetConfig() *Configuration {
 }
 
 func GetLocalIp() {
+    LogWriteF("Ip address: %s", net.LookupIP(os.Hostname()))
     ifaces, err := net.Interfaces()
     if err != nil {
-        WriteF("Error accessing network interfaces: %v", err.Error())
+        LogWriteF("Error accessing network interfaces: %v", err.Error())
     }
     // handle err
     for _, i := range ifaces {
         addrs, err := i.Addrs()
         if err != nil {
-            WriteF("Error occurred getting local IP address: %v", err.Error())
+            LogWriteF("Error occurred getting local IP address: %v", err.Error())
         }
         // handle err
         for _, addr := range addrs {
-            WriteF("%s",addr)
+            LogWriteF("%s",addr.Network())
+            LogWriteF("%s",addr.String())
             /*switch v := addr.(type) {
             case *net.IPAddr:
                 // process IP address

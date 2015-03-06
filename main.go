@@ -24,7 +24,7 @@ func StartWebFileServer(cfg *utils.Configuration) {
         utils.WriteLn("Adding section listener: " + section + "| Serving directory: " + item.Directory)
 		http.Handle(section, http.StripPrefix(section, http.FileServer(http.Dir(item.Directory))))
 	}
-    utils.WriteF("%v", http.ListenAndServe(listenPort, nil))
+    utils.LogWriteF("%v", http.ListenAndServe(listenPort, nil))
 }
 
 func main() {
@@ -35,6 +35,7 @@ func main() {
 	if _, err := os.Stat(ConfigFile); !utils.Check(err, 404, "No config file specified") {
         utils.ReadConfigFromFile(ConfigFile)
 		cfg := utils.GetConfig()
+        utils.GetLocalIp()
         replicator.InitialSync()
 		for _, item := range cfg.Listeners {
             utils.WriteLn("Working with: " + item.Directory)
@@ -43,7 +44,7 @@ func main() {
 		}
 		StartWebFileServer(cfg)
 	} else {
-        utils.WriteF("Config file specified does not exist (%s)", ConfigFile)
+        utils.LogWriteF("Config file specified does not exist (%s)", ConfigFile)
 
 	}
 

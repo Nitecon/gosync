@@ -8,7 +8,7 @@ import (
 )
 
 func SysPathWatcher(path string) {
-	utils.WriteF("Starting new watcher for %s:", path)
+	utils.LogWriteF("Starting new watcher for %s:", path)
 	watcher, err := fsnotify.NewWatcher()
 	if !utils.CheckF(err, 400, "Cannot create new watcher for %s ", path) {
 		defer watcher.Close()
@@ -20,27 +20,27 @@ func SysPathWatcher(path string) {
 				case event := <-watcher.Events:
 					//logs.WriteLn("event:", event)
 					if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-						utils.WriteF("Chmod occurred on:", event.Name)
+						utils.LogWriteF("Chmod occurred on:", event.Name)
 						runFileUpdate(path, event.Name, "chmod")
 					}
 					if event.Op&fsnotify.Rename == fsnotify.Rename {
-						utils.WriteF("Rename occurred on:", event.Name)
+						utils.LogWriteF("Rename occurred on:", event.Name)
 						runFileUpdate(path, event.Name, "rename")
 					}
 					if event.Op&fsnotify.Create == fsnotify.Create {
-						utils.WriteF("New File:", event.Name)
+						utils.LogWriteF("New File:", event.Name)
 						runFileUpdate(path, event.Name, "create")
 					}
 					if event.Op&fsnotify.Write == fsnotify.Write {
-						utils.WriteF("modified file:", event.Name)
+						utils.LogWriteF("modified file:", event.Name)
 						runFileUpdate(path, event.Name, "write")
 					}
 					if event.Op&fsnotify.Remove == fsnotify.Remove {
-						utils.WriteF("Removed File: ", event.Name)
+						utils.LogWriteF("Removed File: ", event.Name)
 						runFileUpdate(path, event.Name, "remove")
 					}
 				case err := <-watcher.Errors:
-					utils.WriteF("error:", err)
+					utils.LogWriteF("error:", err)
 				}
 			}
 
@@ -58,7 +58,7 @@ func runFileUpdate(base_path, path, operation string) bool {
 	fsItem, err := utils.GetFileInfo(path)
 
 	if err != nil {
-		utils.WriteF("Error getting file details for %s: %+v", path, err)
+		utils.LogWriteF("Error getting file details for %s: %+v", path, err)
 	}
 
 	dbItem, err := dbsync.GetOne(base_path, rel_path)
@@ -71,21 +71,21 @@ func runFileUpdate(base_path, path, operation string) bool {
 		  }*/
 		case "create":
 			if dbItem.Checksum != fsItem.Checksum {
-				utils.WriteF("Creating:->")
+				utils.LogWriteF("Creating:->")
 				dbsync.Insert(listener, fsItem)
-				utils.WriteF("Putting in storage:->")
+				utils.LogWriteF("Putting in storage:->")
 				storage.PutFile(path, listener)
 			}
 		case "write":
 			if dbItem.Checksum != fsItem.Checksum {
-				utils.WriteF("Writing:->")
+				utils.LogWriteF("Writing:->")
 				dbsync.Insert(listener, fsItem)
-				utils.WriteF("Putting in storage:->")
+				utils.LogWriteF("Putting in storage:->")
 				storage.PutFile(path, listener)
 			}
 		case "remove":
 			// Item was removed so we just wipe it from DB and storage
-			dbsync.Insert(listener, fsItem)
+			dbsync.Remove(listener, fsItem)
 		}
 	}
 

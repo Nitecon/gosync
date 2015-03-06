@@ -49,7 +49,7 @@ func (s *S3) Upload(local_path, remote_path string) error {
 }
 
 func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string) error {
-    utils.WriteF("S3 Downloading %s -> %s", remote_path, local_path)
+    utils.LogWriteF("S3 Downloading %s -> %s", remote_path, local_path)
     conf,keys := s.GetS3Config()
 
     // Open bucket to put file into
@@ -68,13 +68,13 @@ func (s *S3) Download(remote_path, local_path string,uid, gid int, perms string)
     if err != nil {
         return err
     }
-    utils.WriteF("Header Data: %s",h) // print key header data
+    utils.LogWriteF("Header Data: %s",h) // print key header data
 
     return nil
 }
 
 func (s *S3) CheckMD5(local_path, remote_path string) bool {
-    utils.WriteF("S3 MD5 Check %s -> %s", local_path, remote_path)
+    utils.LogWriteF("S3 MD5 Check %s -> %s", local_path, remote_path)
 	return true
 }
 

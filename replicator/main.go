@@ -37,7 +37,7 @@ func InitialSync() {
 			for _, item := range fsItems {
 				success := dbsync.Insert(key, item)
 				if success != true {
-                    utils.WriteF("An error occurred inserting %x to database", item)
+                    utils.LogWriteF("An error occurred inserting %x to database", item)
 				}
 				if !item.IsDir {
 					storage.PutFile(item.Filename, key)
@@ -64,7 +64,7 @@ func CheckIn(path string){
                 listener := utils.GetListenerFromDir(path)
                 items, err := dbsync.CheckIn(listener)
                 if err != nil{
-                    utils.WriteF("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
+                    utils.LogWriteF("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
                 }
                 cfg := utils.GetConfig()
                 handleDataChanges(items, cfg.Listeners[listener], listener)
@@ -89,7 +89,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
             if !item.IsDirectory {
                 fileMD5 := utils.GetMd5Checksum(absPath)
                 if fileMD5 != item.Checksum {
-                    utils.WriteF("Found %s in db(%s) and fs(%s), NOT matching md5...", absPath, item.Checksum, fileMD5)
+                    utils.LogWriteF("Found %s in db(%s) and fs(%s), NOT matching md5...", absPath, item.Checksum, fileMD5)
                     //@TODO: download the file and set corrected params for file.
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
@@ -105,7 +105,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 
         } else {
             // Item doesn't exist locally but exists in DB so restore it
-            utils.WriteF("Item Deleted Locally: %s restoring from DB marker", absPath)
+            utils.LogWriteF("Item Deleted Locally: %s restoring from DB marker", absPath)
 
             if item.IsDirectory{
                 dirExists,_ := utils.ItemExists(absPath)
@@ -114,7 +114,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
                 }
             }else{
                 if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
-                    utils.WriteF("Server is down for %s going to backup storage", listenerName)
+                    utils.LogWriteF("Server is down for %s going to backup storage", listenerName)
                     // The server must be down so lets get it from S3
                     storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
                 }

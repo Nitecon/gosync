@@ -39,7 +39,7 @@ func GetFile(local_path, listener string, uid, gid int, perms string) error {
 	setStorageEngine(listener)
 	err := storage.Download(utils.GetRelativeBasePath(listener, local_path), local_path, uid, gid, perms)
     if err != nil{
-        utils.WriteF("Error downloading file from S3 (%s) : %+v", err.Error(), err)
+        utils.LogWriteF("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }
     return err
 }
