@@ -32,8 +32,7 @@ func main() {
 	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg",
     "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
-	if _, err := os.Stat(ConfigFile); !utils.Check("No config file specified",404,err) {
-        //utils.WriteF("Using %s as config file", ConfigFile)
+	if _, err := os.Stat(ConfigFile); !utils.Check(err, 404, "No config file specified") {
         utils.ReadConfigFromFile(ConfigFile)
 		cfg := utils.GetConfig()
         replicator.InitialSync()

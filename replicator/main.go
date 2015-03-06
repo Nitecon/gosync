@@ -6,7 +6,6 @@ import (
 	"gosync/utils"
 	"os"
     "time"
-    "gosync/prototypes"
     "fmt"
 )
 
@@ -78,7 +77,7 @@ func CheckIn(path string){
     }()
 }
 
-func handleDataChanges(items []prototypes.DataTable, listener utils.Listener, listenerName string){
+func handleDataChanges(items []utils.DataTable, listener utils.Listener, listenerName string){
     // Walking the directory to get files.
     fsItems := utils.ListFilesInDir(listener.Directory)
     for _, item := range items {

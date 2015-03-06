@@ -5,11 +5,30 @@ import (
     "fmt"
 )
 
-func Check(msg string, code int, err error) bool{
+func Check(err error, code int, msg string) bool{
     appErr := AppError{}
     if err != nil{
         appErr.Error = err
         appErr.Message = msg
+        appErr.Code = code
+        if code >= 500{
+            var stack [4096]byte
+            runtime.Stack(stack[:], false)
+            appErr.Stack = string(stack[:])
+            ErrorLn(4,getLogVerbose(appErr))
+        }else{
+            ErrorLn(3,getLogVerbose(appErr))
+        }
+        return true
+    }
+    return false
+}
+
+func CheckF(err error, code int, format string, a ...interface{}) bool{
+    appErr := AppError{}
+    if err != nil{
+        appErr.Error = err
+        appErr.Message = fmt.Sprintf(format, a)
         appErr.Code = code
         if code >= 500{
             var stack [4096]byte

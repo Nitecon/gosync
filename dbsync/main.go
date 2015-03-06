@@ -2,7 +2,6 @@ package dbsync
 
 import (
 	"gosync/utils"
-	"gosync/prototypes"
 )
 
 var (
@@ -11,11 +10,11 @@ var (
 
 type Datastore interface {
 	Insert(table string, item utils.FsItem) bool
-    Remove(table string, item utils.FsItem) bool
+    Remove(table string, relPath string) bool
 	CheckEmpty(table string) bool
-	FetchAll(table string) []prototypes.DataTable
-	CheckIn(listener string) ([]prototypes.DataTable, error)
-    GetOne(listener, path string) (prototypes.DataTable, error)
+	FetchAll(table string) []utils.DataTable
+	CheckIn(listener string) ([]utils.DataTable, error)
+    GetOne(listener, path string) (utils.DataTable, error)
 	CreateDB()
 	Close() error // call this method when you want to close the connection
 	initDB()
@@ -28,8 +27,6 @@ func setdbstoreEngine() {
 	case "mysql":
 		dbstore = &MySQLDB{config: cfg}
 		dbstore.initDB()
-		//case "pgsql":
-		//dbstore = &PgSQLDB{}
 	}
 }
 
@@ -49,28 +46,29 @@ func CheckEmpty(table string) bool {
 	return empty
 }
 
-func FetchAll(table string) []prototypes.DataTable {
+func FetchAll(table string) []utils.DataTable {
 	setdbstoreEngine()
 	return dbstore.FetchAll(table)
 }
 
-func CheckIn(listener string) ([]prototypes.DataTable, error) {
+func CheckIn(listener string) ([]utils.DataTable, error) {
     utils.WriteLn("Starting db checking background script for: " + listener)
 	data,err := dbstore.CheckIn(listener)
     return data, err
 
 }
 
-func GetOne(basepath, path string) (prototypes.DataTable, error){
+func GetOne(basepath, path string) (utils.DataTable, error){
     setdbstoreEngine()
     listener := utils.GetListenerFromDir(basepath)
     dbitem, err := dbstore.GetOne(listener, path)
     return dbitem, err
 }
 
-func Remove(basepath, path string) bool {
-
-    return true
+func Remove(basepath, relPath string) bool {
+    setdbstoreEngine()
+    listener := utils.GetListenerFromDir(basepath)
+    return dbstore.Remove(listener, relPath)
 }
 
 func CreateDB() {

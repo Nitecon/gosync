@@ -4,11 +4,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-
 	"gosync/utils"
-	"gosync/prototypes"
-
-	//"net/url"
 	"os"
 	"path"
 	"time"
@@ -25,7 +21,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 		isDirectory = 1
 	}
 	hostname, _ := os.Hostname()
-	var keyExists = []prototypes.DataTable{}
+	var keyExists = []utils.DataTable{}
     relFileName := string(utils.GetRelativePath(table, item.Filename))
 	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE path='%s' LIMIT 1", table, relFileName)
 
@@ -49,7 +45,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			time.Now().UTC(),
 		)
 		err = tx.Commit()
-		checkErr(err, "Error inserting data")
+        utils.Check(err, 500, "Error updating data...")
 	} else {
 		tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, last_update) VALUES (?,?,?,?,?,?,?,?,?,?)",
 			utils.GetRelativePath(table, item.Filename),
@@ -63,18 +59,16 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			hostname,
 			time.Now().UTC())
 		err = tx.Commit()
-		checkErr(err, "Error inserting data")
+		utils.Check(err, 500, "Error inserting data...")
 	}
-
 	return true
 }
 
 func (my *MySQLDB) CheckEmpty(table string) bool {
 	var count int
 	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
-	if err != nil {
-		checkErr(err, "Error counting items in table: "+table)
-	}
+	utils.CheckF(err, 500, "Error counting items in table (%s)", table)
+
 	var isEmpty = true
 	if count > 0 {
 		isEmpty = false
@@ -82,37 +76,35 @@ func (my *MySQLDB) CheckEmpty(table string) bool {
 	return isEmpty
 }
 
-func (my *MySQLDB) FetchAll(table string) []prototypes.DataTable {
-	dTable := []prototypes.DataTable{}
+func (my *MySQLDB) FetchAll(table string) []utils.DataTable {
+	dTable := []utils.DataTable{}
 	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated FROM " + table + " ORDER BY is_dir DESC"
 	err := my.db.Select(&dTable, query)
-	checkErr(err, "Error occurred getting file details for: "+table)
+    utils.CheckF(err, 500, "Could not fetch items from database for %s", table)
 	return dTable
 }
 
-func (my *MySQLDB) CheckIn(table string) ([]prototypes.DataTable, error) {
+func (my *MySQLDB) CheckIn(table string) ([]utils.DataTable, error) {
 	hostname, _ := os.Hostname()
-	dTable := []prototypes.DataTable{}
+	dTable := []utils.DataTable{}
 	query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms, host_updated FROM %s where host_updated != '%s' ORDER BY is_dir DESC, last_update DESC", table, hostname)
-	//logs.WriteF("Executing: %s", query)
 	err := my.db.Select(&dTable, query)
 	return dTable, err
 
 }
 
-func (my *MySQLDB) GetOne(listener, path string) (prototypes.DataTable, error){
-    dItem := prototypes.DataTable{}
+func (my *MySQLDB) GetOne(listener, path string) (utils.DataTable, error){
+    dItem := utils.DataTable{}
     query := fmt.Sprintf("SELECT path, is_dir, checksum, mtime, perms FROM %s where path='%s'", listener, path)
     err := my.db.Get(&dItem, query)
     return dItem, err
 }
 
-func (my *MySQLDB) Remove(table string, item utils.FsItem) bool{
+func (my *MySQLDB) Remove(table string, relPath string) bool{
     return true
 }
 
 func (my *MySQLDB) CreateDB() {
-
     utils.WriteLn("Database initialized")
 	for key, _ := range my.config.Listeners {
 		my.db.MustExec(createTableQuery(key))
@@ -132,27 +124,6 @@ func (my *MySQLDB) initDB() {
 	my.db = tempdb
 }
 
-func checkExists(db *sqlx.DB, table, key, val string) bool {
-	var keyExists = 0
-	var query = fmt.Sprintf("SELECT 1 FROM ? WHERE ?='?' LIMIT 1", table, key, val)
-	err := db.Get(&keyExists, query)
-	if err != nil {
-		checkErr(err, "Error checking existence of ("+key+") in table: "+table)
-	}
-	if keyExists > 0 {
-		return true
-	} else {
-		return false
-	}
-	return false
-
-}
-
-func checkErr(err error, msg string) {
-	if err != nil {
-        utils.WriteF(msg, err)
-	}
-}
 
 func createTableQuery(table string) string {
 	var createStmt = fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %s (
