@@ -85,19 +85,25 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
     for _, item := range items {
         absPath := utils.GetAbsPath(listenerName, item.Path)
         itemMatch := getFileInDatabase(absPath, fsItems)
-        perms := fmt.Sprintf("%#o",item.Perms)
+        perms := fmt.Sprintf("File Permissions: %#o",item.Perms)
         if itemMatch {
             // Check to make sure it's not a directory as directories don't need to be uploaded
             if !item.IsDirectory {
                 fileMD5 := utils.GetMd5Checksum(absPath)
                 if fileMD5 != item.Checksum {
                     utils.WriteLn("Processing modified file: " + absPath)
-                    //@TODO: download the file and set corrected params for file.
+                    utils.WriteLn("Source MD5: " + fileMD5)
+                    utils.WriteLn("DB MD5: " + item.Checksum)
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
                         if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
+                            utils.WriteLn("NodeCopy Couldn't get resource!")
                             // The server must be down so lets get it from S3
                             storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
+                        }else{
+                            utils.WriteLn("Node Copy downloaded file successfully")
+                            // Now update the db with corrected md5 and info
+                            // @TODO: Fix DB to update when file was downloaded.
                         }
                     }
                 }

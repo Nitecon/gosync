@@ -49,7 +49,7 @@ func GetFileInfo(doc_path string) (FsItem, error){
 }
 
 func GetMd5Checksum(filepath string) string {
-    if b, err := ComputeMd5(filepath); err == nil {
+    if b, err := computeMd5(filepath); err == nil {
         md5string := fmt.Sprintf("%x", b)
         return md5string
     } else {
@@ -58,7 +58,7 @@ func GetMd5Checksum(filepath string) string {
 }
 
 
-func ComputeMd5(filepath string) (string, error){
+func computeMd5(filepath string) (string, error){
     const filechunk = 8192
     file, err := os.Open(filepath)
 

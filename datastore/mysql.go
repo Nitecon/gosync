@@ -31,6 +31,10 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	if err != nil {
         utils.LogWriteF("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
 	}
+    utils.WriteLn("Old Checksum: "+item.Checksum)
+    newChecksum := utils.GetMd5Checksum(item.Filename)
+    utils.WriteLn("New Checksum to DB: " + newChecksum)
+
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
 		rowId := fmt.Sprintf("%d", keyExists[0].Id)
@@ -39,7 +43,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			isDirectory,
 			path.Base(item.Filename),
 			path.Dir(item.Filename),
-			utils.GetMd5Checksum(item.Filename),
+            newChecksum,
 			time.Now().UTC(),
 			item.Mtime,
 			item.Perms,

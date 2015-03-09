@@ -2,7 +2,7 @@ package fswatcher
 
 import (
 	"gopkg.in/fsnotify.v1"
-    "gosync/datastore"
+	"gosync/datastore"
 	"gosync/storage"
 	"gosync/utils"
 )
@@ -14,30 +14,41 @@ func SysPathWatcher(path string) {
 		defer watcher.Close()
 		done := make(chan bool)
 		go func() {
-
+			listener := utils.GetListenerFromDir(path)
+			rel_path := utils.GetRelativePath(listener, path)
 			for {
 				select {
 				case event := <-watcher.Events:
 					//logs.WriteLn("event:", event)
 					if event.Op&fsnotify.Chmod == fsnotify.Chmod {
 						utils.LogWriteF("Chmod occurred on:", event.Name)
-						runFileUpdate(path, event.Name, "chmod")
+						if checkItemInDB(path, rel_path, event.Name) {
+							runFileUpdate(path, event.Name, "chmod")
+						}
 					}
 					if event.Op&fsnotify.Rename == fsnotify.Rename {
 						utils.LogWriteF("Rename occurred on:", event.Name)
-						runFileUpdate(path, event.Name, "rename")
+						if checkItemInDB(path, rel_path, event.Name) {
+							runFileUpdate(path, event.Name, "rename")
+						}
 					}
 					if event.Op&fsnotify.Create == fsnotify.Create {
 						utils.LogWriteF("New File:", event.Name)
-						runFileUpdate(path, event.Name, "create")
+						if checkItemInDB(path, rel_path, event.Name) {
+							runFileUpdate(path, event.Name, "create")
+						}
 					}
 					if event.Op&fsnotify.Write == fsnotify.Write {
 						utils.LogWriteF("modified file:", event.Name)
-						runFileUpdate(path, event.Name, "write")
+						if checkItemInDB(path, rel_path, event.Name) {
+							runFileUpdate(path, event.Name, "write")
+						}
 					}
 					if event.Op&fsnotify.Remove == fsnotify.Remove {
 						utils.LogWriteF("Removed File: ", event.Name)
-						runFileUpdate(path, event.Name, "remove")
+						if checkItemInDB(path, rel_path, event.Name) {
+							runFileUpdate(path, event.Name, "remove")
+						}
 					}
 				case err := <-watcher.Errors:
 					utils.LogWriteF("error:", err)
@@ -89,5 +100,19 @@ func runFileUpdate(base_path, path, operation string) bool {
 		}
 	}
 
+	return false
+}
+
+func checkItemInDB(base_path, rel_path, abspath string) bool {
+	dbItem, err := datastore.GetOne(base_path, rel_path)
+	if err != nil {
+		if dbItem.Checksum != utils.GetMd5Checksum(abspath) {
+			utils.WriteLn("Checksums do not match running update:")
+			return true
+		} else {
+			utils.WriteLn("File already matches the DB")
+			return false
+		}
+	}
 	return false
 }
