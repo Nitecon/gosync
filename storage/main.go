@@ -3,7 +3,7 @@ package storage
 import (
 
     "gosync/utils"
-
+    "log"
 
 )
 
@@ -16,7 +16,7 @@ var (
 type Backupper interface {
 	Upload(local_path, remote_path string) error
 	Download(remote_path, local_path string, uid, gid int, perms, listener string) error
-	CheckMD5(local_path, remote_path string) bool
+	Remove(remote_path string) bool
 }
 
 func setStorageEngine(listener string) {
@@ -32,19 +32,19 @@ func setStorageEngine(listener string) {
 
 func PutFile(local_path, listener string) error {
 	setStorageEngine(listener)
-	return storage.Upload(local_path, utils.GetRelativeBasePath(listener, local_path))
+	return storage.Upload(local_path, utils.GetRelativeUploadPath(listener, local_path))
 }
 
 func GetFile(local_path, listener string, uid, gid int, perms string) error {
 	setStorageEngine(listener)
-	err := storage.Download(utils.GetRelativeBasePath(listener, local_path), local_path, uid, gid, perms, listener)
+	err := storage.Download(utils.GetRelativeUploadPath(listener, local_path), local_path, uid, gid, perms, listener)
     if err != nil{
-        utils.LogWriteF("Error downloading file from S3 (%s) : %+v", err.Error(), err)
+        log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }
     return err
 }
 
-func ErrorCheckFileMD5(local_path, listener string) bool {
+func RemoveFile(local_path, listener string) bool {
 	setStorageEngine(listener)
-	return storage.CheckMD5(local_path, utils.GetRelativeBasePath(listener, local_path))
+	return storage.Remove(utils.GetRelativeUploadPath(listener, local_path))
 }

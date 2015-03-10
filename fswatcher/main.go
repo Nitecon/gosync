@@ -5,10 +5,13 @@ import (
 	"gosync/datastore"
 	"gosync/storage"
 	"gosync/utils"
+	"log"
+	"os"
+	"strconv"
 )
 
 func SysPathWatcher(path string) {
-	utils.LogWriteF("Starting new watcher for %s:", path)
+	log.Printf("Starting new watcher for %s:", path)
 	watcher, err := fsnotify.NewWatcher()
 	if !utils.ErrorCheckF(err, 400, "Cannot create new watcher for %s ", path) {
 		defer watcher.Close()
@@ -21,37 +24,27 @@ func SysPathWatcher(path string) {
 				case event := <-watcher.Events:
 					//logs.WriteLn("event:", event)
 					if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-						utils.LogWriteF("Chmod occurred on:", event.Name)
-						if checkItemInDB(path, rel_path, event.Name) {
-							runFileUpdate(path, event.Name, "chmod")
-						}
+						runFileChmod(path, event.Name)
 					}
 					if event.Op&fsnotify.Rename == fsnotify.Rename {
-						utils.LogWriteF("Rename occurred on:", event.Name)
-						if checkItemInDB(path, rel_path, event.Name) {
-							runFileUpdate(path, event.Name, "rename")
+						log.Printf("Rename occurred on:", event.Name)
+						if checksumItem(path, rel_path, event.Name) {
+							runFileRename(path, event.Name)
 						}
 					}
-					if event.Op&fsnotify.Create == fsnotify.Create {
-						utils.LogWriteF("New File:", event.Name)
-						if checkItemInDB(path, rel_path, event.Name) {
-							runFileUpdate(path, event.Name, "create")
+					if (event.Op&fsnotify.Create == fsnotify.Create) || (event.Op&fsnotify.Write == fsnotify.Write) {
+						log.Printf("New / Modified File: %s", event.Name)
+						if checksumItem(path, rel_path, event.Name) {
+							runFileCreateUpdate(path, event.Name, "create")
 						}
 					}
-					if event.Op&fsnotify.Write == fsnotify.Write {
-						utils.LogWriteF("modified file:", event.Name)
-						if checkItemInDB(path, rel_path, event.Name) {
-							runFileUpdate(path, event.Name, "write")
-						}
-					}
+
 					if event.Op&fsnotify.Remove == fsnotify.Remove {
-						utils.LogWriteF("Removed File: ", event.Name)
-						if checkItemInDB(path, rel_path, event.Name) {
-							runFileUpdate(path, event.Name, "remove")
-						}
+						runFileRemove(path, event.Name)
+						log.Printf("Removed File: ", event.Name)
 					}
 				case err := <-watcher.Errors:
-					utils.LogWriteF("error:", err)
+					log.Printf("error:", err)
 				}
 			}
 
@@ -63,54 +56,99 @@ func SysPathWatcher(path string) {
 
 }
 
-func runFileUpdate(base_path, path, operation string) bool {
+func runFileRename(base_path, path string) bool {
+	log.Printf("File removed %s: ", path)
+
+	return true
+}
+
+func runFileRemove(base_path, path string) bool {
+	listener := utils.GetListenerFromDir(base_path)
+	rel_path := utils.GetRelativePath(listener, path)
+	// Remove the item from the database (it's already removed from filesystem
+	datastore.Remove(listener, rel_path)
+	// Remove the item from the backup storage location
+	storage.RemoveFile(rel_path, listener)
+	return true
+}
+
+func runFileChmod(base_path, path string) bool {
+	listener := utils.GetListenerFromDir(base_path)
+	rel_path := utils.GetRelativePath(listener, path)
+	dbItem, err := datastore.GetOne(base_path, rel_path)
+	if err != nil {
+		log.Printf("Error occurred trying to get %s from DB\nError: %s", rel_path, err.Error())
+		return false
+	}
+	fsItem, err := utils.GetFileInfo(path)
+	if err != nil {
+		log.Printf("Could not find item on filesystem: %s\nError:%s", path, err.Error())
+	}
+	if dbItem.Perms != fsItem.Perms {
+		iPerm, _ := strconv.Atoi(dbItem.Perms)
+		mode := int(iPerm)
+        if _, err := os.Stat(path); os.IsNotExist(err) {
+            log.Printf("File no longer exists returning")
+            return true
+        }else{
+            err := os.Chmod(path, os.FileMode(mode))
+            if err != nil {
+                log.Printf("Error occurred changing file modes: %s", err.Error())
+                return false
+            }
+            return true
+        }
+	} else {
+		log.Printf("File modes are correct changing nothing")
+		return false
+	}
+	return true
+}
+
+func runFileCreateUpdate(base_path, path, operation string) bool {
 	listener := utils.GetListenerFromDir(base_path)
 	rel_path := utils.GetRelativePath(listener, path)
 	fsItem, err := utils.GetFileInfo(path)
 
 	if err != nil {
-		utils.LogWriteF("Error getting file details for %s: %+v", path, err)
+		log.Printf("Error getting file details for %s: %+v", path, err)
 	}
 
 	dbItem, err := datastore.GetOne(base_path, rel_path)
 
 	if !utils.ErrorCheckF(err, 400, "Error getting file row (%s)", rel_path) {
 		switch operation {
-		/*case "chmod:":
-		  if dbItem.Perms != 0664{
-		      logs.WriteLn("Perms don't match")
-		  }*/
 		case "create":
 			if dbItem.Checksum != fsItem.Checksum {
-				utils.LogWriteF("Creating:->")
+				log.Printf("Creating:-> %s", rel_path)
 				datastore.Insert(listener, fsItem)
-				utils.LogWriteF("Putting in storage:->")
+				log.Printf("Putting in storage:-> %s", rel_path)
 				storage.PutFile(path, listener)
 			}
 		case "write":
 			if dbItem.Checksum != fsItem.Checksum {
-				utils.LogWriteF("Writing:->")
+				log.Printf("Writing:->")
 				datastore.Insert(listener, fsItem)
-				utils.LogWriteF("Putting in storage:->")
+				log.Printf("Putting in storage:->")
 				storage.PutFile(path, listener)
 			}
-		case "remove":
-			// Item was removed so we just wipe it from DB and storage
-			datastore.Remove(listener, fsItem)
 		}
 	}
 
 	return false
 }
 
-func checkItemInDB(base_path, rel_path, abspath string) bool {
+func checksumItem(base_path, rel_path, abspath string) bool {
 	dbItem, err := datastore.GetOne(base_path, rel_path)
 	if err != nil {
+		log.Printf("Error occurred getting item from DB: %s", err.Error())
+		return false
+	} else {
 		if dbItem.Checksum != utils.GetMd5Checksum(abspath) {
-			utils.WriteLn("Checksums do not match running update:")
+			log.Printf("%s != DB item checksum", abspath)
 			return true
 		} else {
-			utils.WriteLn("File already matches the DB")
+			log.Printf("%s === DB item checksum", abspath)
 			return false
 		}
 	}

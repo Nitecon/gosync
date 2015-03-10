@@ -8,6 +8,7 @@ import (
     "time"
     "fmt"
     "gosync/nodeinfo"
+    "log"
 )
 
 func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
@@ -38,7 +39,7 @@ func InitialSync() {
 			for _, item := range fsItems {
 				success := datastore.Insert(key, item)
 				if success != true {
-                    utils.LogWriteF("An error occurred inserting %x to database", item)
+                    log.Printf("An error occurred inserting %x to database", item)
 				}
 				if !item.IsDir {
 					storage.PutFile(item.Filename, key)
@@ -66,7 +67,7 @@ func CheckIn(path string){
                 listener := utils.GetListenerFromDir(path)
                 items, err := datastore.CheckIn(listener)
                 if err != nil{
-                    utils.LogWriteF("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
+                    log.Printf("Error occurred getting data for %s (%s): %+v",listener, err.Error(), err)
                 }
                 cfg := utils.GetConfig()
                 handleDataChanges(items, cfg.Listeners[listener], listener)
@@ -82,6 +83,7 @@ func CheckIn(path string){
 func handleDataChanges(items []utils.DataTable, listener utils.Listener, listenerName string){
     // Walking the directory to get files.
     fsItems := utils.ListFilesInDir(listener.Directory)
+    log.Printf("Items only on the filesystem:\n%+v", findOnlyInFS(fsItems, items, listenerName))
     for _, item := range items {
         absPath := utils.GetAbsPath(listenerName, item.Path)
         itemMatch := getFileInDatabase(absPath, fsItems)
@@ -92,18 +94,36 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
                 fileMD5 := utils.GetMd5Checksum(absPath)
                 if fileMD5 != item.Checksum {
                     utils.WriteLn("Processing modified file: " + absPath)
-                    utils.WriteLn("Source MD5: " + fileMD5)
-                    utils.WriteLn("DB MD5: " + item.Checksum)
                     hostname, _ := os.Hostname()
                     if item.HostUpdated != hostname {
-                        if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
-                            utils.WriteLn("NodeCopy Couldn't get resource!")
-                            // The server must be down so lets get it from S3
-                            storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
+                        // File wasn't updated locally so get it from remote
+                        bNodeCopy := storage.GetNodeCopy(item, listenerName, listener.Uid, listener.Gid, perms)
+                        if bNodeCopy {
+                            // Item downloaded successfully so update db with new md5
+                            newFileInfo, err := utils.GetFileInfo(absPath)
+                            if err != nil{
+                                log.Printf("Error occurred trying to get info on file: %s", absPath)
+                            }else{
+                                datastore.Insert(listenerName, newFileInfo)
+                            }
                         }else{
-                            utils.WriteLn("Node Copy downloaded file successfully")
-                            // Now update the db with corrected md5 and info
-                            // @TODO: Fix DB to update when file was downloaded.
+                            // Item didn't download from nodes (maybe ports are closed so lets get from backups)
+                            storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
+                            newFileInfo, err := utils.GetFileInfo(absPath)
+                            if err != nil{
+                                log.Printf("Error occurred trying to get info on file: %s", absPath)
+                            }else{
+                                datastore.Insert(listenerName, newFileInfo)
+                            }
+                        }
+                    }else{
+                        // Item was modified locally and does not match so lets fix it with what is in db
+                        storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
+                        newFileInfo, err := utils.GetFileInfo(absPath)
+                        if err != nil{
+                            log.Printf("Error occurred trying to get info on file: %s", absPath)
+                        }else{
+                            datastore.Insert(listenerName, newFileInfo)
                         }
                     }
                 }
@@ -112,7 +132,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 
         } else {
             // Item doesn't exist locally but exists in DB so restore it
-            utils.LogWriteF("Item Deleted Locally: %s restoring from DB marker", absPath)
+            log.Printf("Item Deleted Locally: %s restoring from DB marker", absPath)
             if item.IsDirectory{
                 dirExists,_ := utils.ItemExists(absPath)
                 if !dirExists{
@@ -120,7 +140,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
                 }
             }else{
                 if !storage.GetNodeCopy(item, listenerName, listener.Uid,listener.Gid, perms) {
-                    utils.LogWriteF("Server is down for %s going to backup storage", listenerName)
+                    log.Printf("Server is down for %s going to backup storage", listenerName)
                     // The server must be down so lets get it from S3
                     storage.GetFile(absPath, listenerName, listener.Uid,listener.Gid, perms)
                 }
@@ -129,4 +149,23 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 
         }
     }
+}
+
+func findOnlyInFS(fsItems []utils.FsItem, dbItems []utils.DataTable, listener string) []string{
+    var leftovers []string
+    for _, fsItem := range fsItems{
+        itemInDB := false
+        // Iterate over db items to check and see if the item exists in the db
+        for _, dbItem := range dbItems{
+            absPath := utils.GetAbsPath(listener, dbItem.Path)
+            if fsItem.Path == absPath{
+                itemInDB = true
+            }
+        }
+        // Item doesn't exist in db so add it to the leftover array
+        if !itemInDB{
+            leftovers = append(leftovers, fsItem.Path)
+        }
+    }
+    return leftovers
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"time"
+    "log"
 )
 
 type MySQLDB struct {
@@ -29,11 +30,9 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 
 	err := my.db.Select(&keyExists, query)
 	if err != nil {
-        utils.LogWriteF("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
+        log.Printf("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
 	}
-    utils.WriteLn("Old Checksum: "+item.Checksum)
     newChecksum := utils.GetMd5Checksum(item.Filename)
-    utils.WriteLn("New Checksum to DB: " + newChecksum)
 
 	tx := my.db.MustBegin()
 	if len(keyExists) > 0 {
@@ -126,9 +125,18 @@ func (my *MySQLDB) GetOne(listener, path string) (utils.DataTable, error){
     return dItem, err
 }
 
-func (my *MySQLDB) Remove(table string, item utils.FsItem) bool{
+func (my *MySQLDB) Remove(table, path string) bool{
     my.db = my.initDB()
     defer my.db.Close()
+    query := fmt.Sprintf("DELETE FROM %s where path ='%s'", table, path)
+    log.Printf("Executing: %s", query)
+    tx := my.db.MustBegin()
+    tx.MustExec(query)
+    err := tx.Commit()
+    if err != nil{
+        log.Printf("Error occurrred removing %s:\n%s",path, err.Error())
+        return false
+    }
     return true
 }
 

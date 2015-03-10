@@ -4,7 +4,7 @@ import (
     "strings"
     "os"
     "io"
-    "io/ioutil"
+    "strconv"
     "crypto/md5"
     "fmt"
     "math"
@@ -96,27 +96,32 @@ func checkErr(err error, msg string) {
 }
 
 
-func GetBasePath(listener string) string {
-    cfg := GetConfig()
-    return cfg.Listeners[listener].BasePath
-}
-
-func GetBaseDir(listener string) string {
+// Fetches the home directory of the listener from the config file
+func GetListenerHomeDir(listener string) string{
     cfg := GetConfig()
     return cfg.Listeners[listener].Directory
 }
 
-func GetRelativeBasePath(listener, local_path string) string {
-    lPath := strings.TrimPrefix(local_path, GetBaseDir(listener))
-    return GetBasePath(listener) + lPath
+// Fetches the base directory (upload path) from configuration file
+func GetListenerUploadPath(listener string) string {
+    cfg := GetConfig()
+    return cfg.Listeners[listener].BasePath
 }
 
-func GetRelativePath(listener, local_path string) string {
-    return strings.TrimPrefix(local_path, GetBaseDir(listener))
+// Gets the relative path based on the home directory, essentially stripping the listener,
+// home directory from the absolute path
+func GetRelativePath(listener, local_path string) string{
+    return strings.TrimPrefix(local_path, GetListenerHomeDir(listener))
+}
+
+// Gets the relative path for the item by trimming the absolute path with the home dir,
+// it then appends the base directory (Upload Path) to the front of the relative path.
+func GetRelativeUploadPath(listener, local_path string) string{
+    return GetListenerUploadPath(listener) + GetRelativePath(listener, local_path)
 }
 
 func GetAbsPath(listener, db_path string) string {
-    absPath := GetBaseDir(listener) + db_path
+    absPath := GetListenerHomeDir(listener) + db_path
     //logs.LogWriteF("=====> Absolute Path: %s <=====", absPath)
     return absPath
 }
@@ -146,8 +151,9 @@ func ItemExists(path string) (bool, error) {
 }
 
 func FileWrite(path string, r io.Reader, uid, gid int, perms string) (int64, error){
-
-    w, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0664)
+    iPerm, _ := strconv.Atoi(perms)
+    mode := int(iPerm)
+    w, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, os.FileMode(mode))
     if err != nil {
         if path == "" {
             w = os.Stdout
@@ -159,22 +165,9 @@ func FileWrite(path string, r io.Reader, uid, gid int, perms string) (int64, err
 
     size, err := io.Copy(w, r)
 
-
     if err != nil {
         return 0, err
     }
-
+    err = w.Chown(uid, gid)
     return size, err
-}
-
-func FileWriteBytes(path string, content []byte, overwrite bool, uid, gid int, perms string) (int64,error ){
-    /*buf := new(bytes.Buffer)
-    buf.ReadFrom(r)
-    content := buf.Bytes()*/
-    err := ioutil.WriteFile(path, content, 0644)
-    if err != nil {
-        return 0, err
-    }
-
-    return 0, err
 }

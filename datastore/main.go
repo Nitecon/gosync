@@ -10,7 +10,7 @@ var (
 
 type Datastore interface {
 	Insert(table string, item utils.FsItem) bool
-    Remove(table string, item utils.FsItem) bool
+    Remove(table, path string) bool
 	CheckEmpty(table string) bool
 	FetchAll(table string) []utils.DataTable
 	CheckIn(listener string) ([]utils.DataTable, error)
@@ -69,9 +69,9 @@ func GetOne(basepath, path string) (utils.DataTable, error){
     return dbitem, err
 }
 
-func Remove(table string, item utils.FsItem) bool {
+func Remove(table, path string) bool {
     setdbstoreEngine()
-    return dbstore.Remove(table, item)
+    return dbstore.Remove(table, path)
 }
 
 func CreateDB() {

@@ -19,6 +19,7 @@ type MySQLNodeDB struct {
 }
 
 func (my *MySQLNodeDB) Insert() bool {
+    defer my.db.Close()
 	tx := my.db.MustBegin()
 	tx.MustExec("INSERT INTO "+table+" (hostname, host_ips, connected_on, last_update) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE hostname=?, host_ips=?, connected_on=?, last_update=?",
     utils.GetSystemHostname(),
@@ -35,6 +36,7 @@ func (my *MySQLNodeDB) Insert() bool {
 }
 
 func (my *MySQLNodeDB) GetAll() ([]utils.NodeTable) {
+    defer my.db.Close()
 	nData := []utils.NodeTable{}
     hostname, _ := os.Hostname()
     query := "select id, hostname, host_ips, connected_on, last_update from "+table+" where hostname != '"+hostname+"' ORDER BY last_update DESC;"
@@ -44,6 +46,7 @@ func (my *MySQLNodeDB) GetAll() ([]utils.NodeTable) {
 }
 
 func (my *MySQLNodeDB) Update() bool {
+    defer my.db.Close()
     tx := my.db.MustBegin()
     tx.MustExec("UPDATE "+table+" SET hostname=?, host_ips=?, last_update=? where hostname=?" ,
     utils.GetSystemHostname(),
@@ -57,6 +60,7 @@ func (my *MySQLNodeDB) Update() bool {
 
 // call this method when you want to close the connection
 func (my *MySQLNodeDB) Close(deadHost string) {
+    defer my.db.Close()
     tx := my.db.MustBegin()
     tx.MustExec("DELETE FROM "+table+" where hostname='?'" ,
     deadHost)
@@ -64,16 +68,19 @@ func (my *MySQLNodeDB) Close(deadHost string) {
     utils.Check(err, 500, "Error updating node alive...")
 }
 
+
 func (my *MySQLNodeDB) initDB() {
 	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
 	if err != nil {
 		utils.WriteLn(err.Error())
 	}
 	my.db = tempdb
+
 }
 
 func (my *MySQLNodeDB) CreateDB() {
 	my.db.MustExec(createTableQuery(table))
+    defer my.db.Close()
 }
 
 func createTableQuery(table string) string {

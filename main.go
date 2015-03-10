@@ -35,22 +35,17 @@ func main() {
 	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg",
     "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
-	proc, err := os.Stat(ConfigFile){
-        if err != nil{
-
-        }
-
+	if _, err := os.Stat(ConfigFile); os.IsNotExist(err) {
+        log.Fatalf("Configuration file does not exist or cannot be loaded:\n (%s)", ConfigFile)
+    }else {
         utils.ReadConfigFromFile(ConfigFile)
-		cfg := utils.GetConfig()
+        cfg := utils.GetConfig()
         replicator.InitialSync()
-		for _, item := range cfg.Listeners {
+        for _, item := range cfg.Listeners {
             utils.WriteLn("Working with: " + item.Directory)
-			go replicator.CheckIn(item.Directory)
-			go fswatcher.SysPathWatcher(item.Directory)
-		}
-		StartWebFileServer(cfg)
-	} else {
-        utils.LogWriteF("Config file specified does not exist (%s)", ConfigFile)
-	}
-
+            go replicator.CheckIn(item.Directory)
+            go fswatcher.SysPathWatcher(item.Directory)
+        }
+        StartWebFileServer(cfg)
+    }
 }

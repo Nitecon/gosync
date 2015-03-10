@@ -2,6 +2,7 @@ package storage
 
 import (
     "gosync/utils"
+    "log"
 )
 
 type GDrive struct {
@@ -19,7 +20,7 @@ func (g *GDrive) Download(remote_path, local_path string, uid, gid int, perms, l
 	return nil
 }
 
-func (g *GDrive) CheckMD5(local_path, remote_path string) bool {
-    utils.WriteLn("Doing md5 check on GDrive")
+func (g *GDrive) Remove(remote_path string) bool {
+    log.Printf("Removing %s from Google Drive Storage", remote_path)
 	return true
 }
