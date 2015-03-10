@@ -9,7 +9,7 @@ import (
     "gosync/nodeinfo"
     "gosync/replicator"
 	"gosync/fswatcher"
-
+    "log"
 	"net/http"
     "gosync/utils"
 	"os"
@@ -18,16 +18,16 @@ import (
 
 func StartWebFileServer(cfg *utils.Configuration) {
     nodeinfo.Initialize()
-    utils.WriteLn("Starting web listener")
+    log.Println("Starting Web File server and setting node as active")
     nodeinfo.SetAlive()
 
 	var listenPort = ":" + cfg.ServerConfig.ListenPort
 	for name, item := range cfg.Listeners {
 		var section = "/" + name + "/"
-        utils.WriteLn("Adding section listener: " + section + "| Serving directory: " + item.Directory)
+        log.Printf("Adding section listener: %s, to serve directory: %s", section, item.Directory)
 		http.Handle(section, http.StripPrefix(section, http.FileServer(http.Dir(item.Directory))))
 	}
-    utils.LogWriteF("%v", http.ListenAndServe(listenPort, nil))
+    log.Fatal(http.ListenAndServe(listenPort, nil))
 }
 
 func main() {
@@ -35,7 +35,11 @@ func main() {
 	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg",
     "Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
-	if _, err := os.Stat(ConfigFile); !utils.Check(err, 404, "No config file specified") {
+	proc, err := os.Stat(ConfigFile){
+        if err != nil{
+
+        }
+
         utils.ReadConfigFromFile(ConfigFile)
 		cfg := utils.GetConfig()
         replicator.InitialSync()
