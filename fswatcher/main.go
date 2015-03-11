@@ -41,7 +41,7 @@ func SysPathWatcher(path string) {
 
 					if event.Op&fsnotify.Remove == fsnotify.Remove {
 						runFileRemove(path, event.Name)
-						log.Printf("Removed File: ", event.Name)
+						log.Printf("Removed File: %s", event.Name)
 					}
 				case err := <-watcher.Errors:
 					log.Printf("error:", err)
@@ -87,17 +87,17 @@ func runFileChmod(base_path, path string) bool {
 	if dbItem.Perms != fsItem.Perms {
 		iPerm, _ := strconv.Atoi(dbItem.Perms)
 		mode := int(iPerm)
-        if _, err := os.Stat(path); os.IsNotExist(err) {
-            log.Printf("File no longer exists returning")
-            return true
-        }else{
-            err := os.Chmod(path, os.FileMode(mode))
-            if err != nil {
-                log.Printf("Error occurred changing file modes: %s", err.Error())
-                return false
-            }
-            return true
-        }
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			log.Printf("File no longer exists returning")
+			return true
+		} else {
+			err := os.Chmod(path, os.FileMode(mode))
+			if err != nil {
+				log.Printf("Error occurred changing file modes: %s", err.Error())
+				return false
+			}
+			return true
+		}
 	} else {
 		log.Printf("File modes are correct changing nothing")
 		return false
@@ -114,28 +114,10 @@ func runFileCreateUpdate(base_path, path, operation string) bool {
 		log.Printf("Error getting file details for %s: %+v", path, err)
 	}
 
-	dbItem, err := datastore.GetOne(base_path, rel_path)
-
-	if !utils.ErrorCheckF(err, 400, "Error getting file row (%s)", rel_path) {
-		switch operation {
-		case "create":
-			if dbItem.Checksum != fsItem.Checksum {
-				log.Printf("Creating:-> %s", rel_path)
-				datastore.Insert(listener, fsItem)
-				log.Printf("Putting in storage:-> %s", rel_path)
-				storage.PutFile(path, listener)
-			}
-		case "write":
-			if dbItem.Checksum != fsItem.Checksum {
-				log.Printf("Writing:->")
-				datastore.Insert(listener, fsItem)
-				log.Printf("Putting in storage:->")
-				storage.PutFile(path, listener)
-			}
-		}
-	}
-
-	return false
+	log.Printf("Putting in storage:-> %s", rel_path)
+	storage.PutFile(path, listener)
+    log.Printf("Creating/Updating:-> %s", rel_path)
+    return datastore.Insert(listener, fsItem)
 }
 
 func checksumItem(base_path, rel_path, abspath string) bool {

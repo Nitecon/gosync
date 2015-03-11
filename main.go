@@ -13,6 +13,7 @@ import (
 	"net/http"
     "gosync/utils"
 	"os"
+    "fmt"
 )
 
 
@@ -38,6 +39,7 @@ func main() {
 	if _, err := os.Stat(ConfigFile); os.IsNotExist(err) {
         log.Fatalf("Configuration file does not exist or cannot be loaded:\n (%s)", ConfigFile)
     }else {
+        fmt.Print("GoSYNC Started....")
         utils.ReadConfigFromFile(ConfigFile)
         cfg := utils.GetConfig()
         replicator.InitialSync()

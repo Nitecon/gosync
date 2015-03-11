@@ -16,6 +16,7 @@ type Datastore interface {
 	CheckIn(listener string) ([]utils.DataTable, error)
     GetOne(listener, path string) (utils.DataTable, error)
     UpdateHost(table, path string)
+    PathExists(listener, path string) bool
 	CreateDB()
 }
 
@@ -67,6 +68,11 @@ func GetOne(basepath, path string) (utils.DataTable, error){
     listener := utils.GetListenerFromDir(basepath)
     dbitem, err := dbstore.GetOne(listener, path)
     return dbitem, err
+}
+
+func PathExists(listener, path string) bool{
+    setdbstoreEngine()
+    return dbstore.PathExists(listener, utils.GetRelativePath(listener, path))
 }
 
 func Remove(table, path string) bool {
