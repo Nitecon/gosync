@@ -24,7 +24,7 @@ GSPID="/var/run/gosync.pid"
 start() {
         KIND="GoSYNC"
   echo -n $"Starting $KIND services: "
-  daemon --user=root --pidfile $GSPID $GOSYNCEXEC $GOSYNCOPTIONS
+  daemon --user=root --pidfile $GSPID "$GOSYNCEXEC $GOSYNCOPTIONS &"
   RETVAL=$?
   echo
   [ $RETVAL -eq 0 ] && touch /var/lock/subsys/gosync || RETVAL=1
