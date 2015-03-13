@@ -33,23 +33,28 @@ dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
 
 [listeners]
 	[listeners.MonitorMe1]
+	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
+    basepath="/fssync/MonitorMe1"
+    # Excludes are a comma seperated list of files or directories to be excluded
+    # Example ".git/,vendor/somefile/blah.txt"
+    excludes = ""
+    #UID / GID below is what the files should be owned as when synced
 	uid = 504
   	gid = 504
   	directory = "/data/directory/to/monitor"
-	key = "monitorme1_directory"
-	secret = "aslkdfjaslfjka;sljd"
 	storagetype="s3"
 	bucket="fssync"
-	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
-	basepath="/fssync/MonitorMe1"
+
 
 	[listeners.Bootstrapped]
+	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
+    basepath="/fssync/Bootstrapped"
+    # Excludes are a comma seperated list of files or directories to be excluded
+    # Example ".git/,vendor/somefile/blah.txt"
+    excludes = ""
+    #UID / GID below is what the files should be owned as when synced
 	uid = 504
   	gid = 504
   	directory = "/data/directory/to/monitorthistoo"
-	key = "monitormethistoo_directory"
-	secret = "oiweurldkfj"
-	storage="s3"
+  	storage="s3"
 	bucket="fssync"
-	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
-	basepath="/fssync/Bootstrapped"

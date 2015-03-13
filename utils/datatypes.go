@@ -70,7 +70,7 @@ type StorageGDrive struct {
 
 type BaseConfig struct {
 	ListenPort  string `toml:"listen_port"`
-	RescanTime  int    `toml:"rescan"`
+	RescanTime  int    `toml:"rescan"`WW
 	StorageType string `toml:"storagetype"`
 	LogLocation string `toml:"log_location"`
 	LogLevel    int    `toml:"log_level"`
@@ -78,8 +78,7 @@ type BaseConfig struct {
 
 type Listener struct {
 	Directory   string
-	Key         string
-	Secret      string
+	Excludes    string `toml:"excludes"`
 	Uid         int
 	Gid         int
 	StorageType string `toml:"storagetype"`
