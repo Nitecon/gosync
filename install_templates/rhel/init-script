@@ -19,7 +19,7 @@ unset TMPDIR
 
 RETVAL=0
 GOSYNCEXEC="/usr/local/bin/gosync"
-GOSYNCOPTIONS="-config /etc/gosync/config.cfg"
+GOSYNCOPTIONS='-config /etc/gosync/config.cfg -log_dir="/var/log/gosync"'
 GSPID="/var/run/gosync.pid"
 start() {
         KIND="GoSYNC"

@@ -6,6 +6,8 @@ import (
     "log"
 )
 
+
+
 func WriteLn(msg string) {
     cfg := GetConfig()
     if cfg.ServerConfig.LogLocation != "stdout" {
