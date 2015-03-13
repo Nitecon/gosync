@@ -6,7 +6,9 @@ rescan = 30
 # The filesystem storage to be used
 storagetype="s3"
 # The location for the log file (can be stdout or a path to file)
-log_location="stdout"
+#log_location="stdout"
+log_location="/var/log/gosync/gosync.log"
+
 # Log levels are (0 = debug, 1 = info, 2 = warning, 3 = error, 4 = fatal)
 # The lower the log level the more information is printed (level 4 fatal causes the application to exit)
 log_level=0

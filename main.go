@@ -13,22 +13,26 @@ import (
 	"gosync/utils"
 	"net/http"
 	"os"
+    "path/filepath"
 )
 
 func getLoggerConfig() string {
 	cfg := utils.GetConfig()
 	var loggerConfig = ""
 	if cfg.ServerConfig.LogLocation != "stdout" {
-		loggerConfig = `<seelog>
+        if _, err := os.Stat(filepath.Dir(cfg.ServerConfig.LogLocation)); os.IsNotExist(err) {
+            os.Mkdir(filepath.Dir(cfg.ServerConfig.LogLocation), 0775)
+        }
+		loggerConfig = `<seelog type="asynctimer" asyncinterval="1000">
     <outputs formatid="main">
-        <rollingfile type="size" filename="` + cfg.ServerConfig.LogLocation + `" maxsize="100" maxrolls="5" />
+        <file path="` + cfg.ServerConfig.LogLocation + `" />
     </outputs>
     <formats>
-        <format id="main" format="%Date %Time %Msg%n"/>
+        <format id="main" format="%Date %Time [%LEVEL] %Msg%n"/>
     </formats>
     </seelog>`
 	} else {
-		loggerConfig = `<seelog>
+		loggerConfig = `<seelog type="asynctimer" asyncinterval="1000">
     <outputs formatid="main">
         <console/>
     </outputs>
@@ -61,10 +65,12 @@ func init() {
 		"Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
 	if _, err := os.Stat(ConfigFile); os.IsNotExist(err) {
-		log.Criticalf("Configuration file does not exist or cannot be loaded:\n (%s)", ConfigFile)
+		log.Criticalf("Configuration file does not exist or cannot be loaded: (%s)", ConfigFile)
+        os.Exit(1)
 	} else {
 		utils.ReadConfigFromFile(ConfigFile)
 	}
+
 	logger, err := log.LoggerFromConfigAsString(getLoggerConfig())
 
 	if err == nil {
