@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"gosync/utils"
+    log "github.com/cihub/seelog"
 )
 
 var (
@@ -38,9 +39,9 @@ func CheckEmpty(table string) bool {
 	setdbstoreEngine()
 	empty := dbstore.CheckEmpty(table)
 	if empty {
-        utils.WriteLn("Database is EMPTY, starting creation")
+        log.Info("Database is EMPTY, starting creation")
 	} else {
-        utils.WriteLn("Using existing table: " + table)
+        log.Info("Using existing table: " + table)
 	}
 	return empty
 }
@@ -57,7 +58,7 @@ func UpdateHost(table, path string){
 
 func CheckIn(listener string) ([]utils.DataTable, error) {
     setdbstoreEngine()
-    utils.WriteLn("Starting db checking background script for: " + listener)
+    log.Infof("Starting db checking background script for: " + listener)
 	data,err := dbstore.CheckIn(listener)
     return data, err
 

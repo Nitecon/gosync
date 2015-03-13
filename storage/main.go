@@ -3,7 +3,7 @@ package storage
 import (
 
     "gosync/utils"
-    "log"
+    log "github.com/cihub/seelog"
 
 )
 
@@ -39,7 +39,7 @@ func GetFile(local_path, listener string, uid, gid int, perms string) error {
 	setStorageEngine(listener)
 	err := storage.Download(utils.GetRelativeUploadPath(listener, local_path), local_path, uid, gid, perms, listener)
     if err != nil{
-        log.Printf("Error downloading file from S3 (%s) : %+v", err.Error(), err)
+        log.Infof("Error downloading file from S3 (%s) : %+v", err.Error(), err)
     }
     return err
 }

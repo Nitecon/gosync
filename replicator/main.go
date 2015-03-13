@@ -6,9 +6,9 @@ import (
 	"gosync/nodeinfo"
 	"gosync/storage"
 	"gosync/utils"
-	"log"
 	"os"
 	"time"
+    log "github.com/cihub/seelog"
 )
 
 func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
@@ -22,10 +22,9 @@ func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
 
 func InitialSync() {
 	cfg := utils.GetConfig()
-
-	utils.WriteLn("Verifying DB Tables")
+    log.Info("Verifying DB Tables")
 	datastore.CreateDB()
-	utils.WriteLn("Initial sync starting...")
+    log.Info("Initial sync starting...")
 
 	for key, listener := range cfg.Listeners {
 		// First check to see if the table is empty and do a full import false == not empty
@@ -39,7 +38,7 @@ func InitialSync() {
 			for _, item := range fsItems {
 				success := datastore.Insert(key, item)
 				if success != true {
-					log.Printf("An error occurred inserting %x to database", item)
+					log.Infof("An error occurred inserting %x to database", item)
 				}
 				if !item.IsDir {
 					storage.PutFile(item.Filename, key)
@@ -50,11 +49,11 @@ func InitialSync() {
 
 	}
 
-	utils.WriteLn("Initial sync completed...")
+	log.Info("Initial sync completed...")
 }
 
 func CheckIn(path string) {
-	utils.WriteLn("Starting db checking background script: " + path)
+	log.Info("Starting db checking background script: " + path)
 	ticker := time.NewTicker(10 * time.Second)
 	quit := make(chan struct{})
 	go func() {
@@ -62,11 +61,11 @@ func CheckIn(path string) {
 			select {
 			case <-ticker.C:
 				nodeinfo.UpdateConnection()
-				utils.WriteLn("Checking all changed stuff in db for: " + path)
+				log.Info("Checking all changed stuff in db for: " + path)
 				listener := utils.GetListenerFromDir(path)
 				items, err := datastore.CheckIn(listener)
 				if err != nil {
-					log.Printf("Error occurred getting data for %s (%s): %+v", listener, err.Error(), err)
+					log.Infof("Error occurred getting data for %s (%s): %+v", listener, err.Error(), err)
 				}
 				cfg := utils.GetConfig()
 				handleDataChanges(items, cfg.Listeners[listener], listener)
@@ -87,10 +86,10 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 		for _, delItem := range itemsToDelete {
 			itemExists := datastore.PathExists(listenerName, delItem)
 			if !itemExists {
-				log.Printf("Removing untracked item: %s", delItem)
+				log.Infof("Removing untracked item: %s", delItem)
 				err := os.Remove(delItem)
 				if err != nil {
-					log.Printf("Error deleting untracked file %s\n%s", delItem, err.Error())
+					log.Infof("Error deleting untracked file %s\n%s", delItem, err.Error())
 				}
 			}
 
@@ -105,7 +104,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 			if !item.IsDirectory {
 				fileMD5 := utils.GetMd5Checksum(absPath)
 				if fileMD5 != item.Checksum {
-					utils.WriteLn("Processing modified file: " + absPath)
+					log.Info("Processing modified file: " + absPath)
 					hostname, _ := os.Hostname()
 					if item.HostUpdated != hostname {
 						// File wasn't updated locally so get it from remote
@@ -114,7 +113,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 							// Item downloaded successfully so update db with new md5
 							newFileInfo, err := utils.GetFileInfo(absPath)
 							if err != nil {
-								log.Printf("Error occurred trying to get info on file: %s", absPath)
+								log.Infof("Error occurred trying to get info on file: %s", absPath)
 							} else {
 								datastore.Insert(listenerName, newFileInfo)
 							}
@@ -123,7 +122,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 							storage.GetFile(absPath, listenerName, listener.Uid, listener.Gid, perms)
 							newFileInfo, err := utils.GetFileInfo(absPath)
 							if err != nil {
-								log.Printf("Error occurred trying to get info on file: %s", absPath)
+								log.Infof("Error occurred trying to get info on file: %s", absPath)
 							} else {
 								datastore.Insert(listenerName, newFileInfo)
 							}
@@ -133,7 +132,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 						storage.GetFile(absPath, listenerName, listener.Uid, listener.Gid, perms)
 						newFileInfo, err := utils.GetFileInfo(absPath)
 						if err != nil {
-							log.Printf("Error occurred trying to get info on file: %s", absPath)
+							log.Infof("Error occurred trying to get info on file: %s", absPath)
 						} else {
 							datastore.Insert(listenerName, newFileInfo)
 						}
@@ -144,7 +143,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 
 		} else {
 			// Item doesn't exist locally but exists in DB so restore it
-			log.Printf("Item Deleted Locally: %s restoring from DB marker", absPath)
+			log.Infof("Item Deleted Locally: %s restoring from DB marker", absPath)
 			if item.IsDirectory {
 				dirExists, _ := utils.ItemExists(absPath)
 				if !dirExists {
@@ -152,7 +151,7 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 				}
 			} else {
 				if !storage.GetNodeCopy(item, listenerName, listener.Uid, listener.Gid, perms) {
-					log.Printf("Server is down for %s going to backup storage", listenerName)
+					log.Infof("Server is down for %s going to backup storage", listenerName)
 					// The server must be down so lets get it from S3
 					storage.GetFile(absPath, listenerName, listener.Uid, listener.Gid, perms)
 				}
@@ -169,7 +168,7 @@ func findOnlyInFS(fsItems []utils.FsItem, dbItems []utils.DataTable, listener st
 		// Iterate over db items to check and see if the item exists in the db
 		for _, dbItem := range dbItems {
 			absPath := utils.GetAbsPath(listener, dbItem.Path)
-			//log.Printf("Validating if %s == %s", fsItem.Filename, absPath)
+			//log.Infof("Validating if %s == %s", fsItem.Filename, absPath)
 			if fsItem.Filename == absPath {
 				itemInDB = true
 			}

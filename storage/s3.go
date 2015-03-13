@@ -7,7 +7,7 @@ import (
     "io"
     "gosync/datastore"
     "strings"
-    "log"
+    log "github.com/cihub/seelog"
 )
 
 type S3 struct {
@@ -52,7 +52,7 @@ func (s *S3) Upload(local_path, remote_path string) error {
 }
 
 func (s *S3) Download(remote_path, local_path string,uid, gid int, perms, listener string) error {
-    log.Printf("S3 Downloading %s", local_path)
+    log.Infof("S3 Downloading %s", local_path)
     conf,keys := s.GetS3Config()
 
     // Open bucket to put file into
@@ -78,7 +78,7 @@ func (s *S3) Download(remote_path, local_path string,uid, gid int, perms, listen
 }
 
 func (s *S3) Remove(remote_path string) bool {
-    log.Printf("Removing file %s from s3 storage", remote_path)
+    log.Infof("Removing file %s from s3 storage", remote_path)
     _,keys := s.GetS3Config()
 
     // Open bucket to put file into

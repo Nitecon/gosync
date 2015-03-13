@@ -6,27 +6,53 @@ package main
 
 import (
 	"flag"
+	log "github.com/cihub/seelog"
 	"gosync/fswatcher"
 	"gosync/nodeinfo"
 	"gosync/replicator"
 	"gosync/utils"
-	"log"
 	"net/http"
 	"os"
 )
 
+func getLoggerConfig() string {
+	cfg := utils.GetConfig()
+	var loggerConfig = ""
+	if cfg.ServerConfig.LogLocation != "stdout" {
+		loggerConfig = `<seelog>
+    <outputs formatid="main">
+        <rollingfile type="size" filename="` + cfg.ServerConfig.LogLocation + `" maxsize="100" maxrolls="5" />
+    </outputs>
+    <formats>
+        <format id="main" format="%Date %Time %Msg%n"/>
+    </formats>
+    </seelog>`
+	} else {
+		loggerConfig = `<seelog>
+    <outputs formatid="main">
+        <console/>
+    </outputs>
+    <formats>
+        <format id="main" format="%Date %Time [%LEVEL] %Msg (%RelFile:%Func)%n"/>
+    </formats>
+    </seelog>`
+	}
+
+	return loggerConfig
+}
+
 func StartWebFileServer(cfg *utils.Configuration) {
 	nodeinfo.Initialize()
-	log.Println("Starting Web File server and setting node as active")
+	log.Info("Starting Web File server and setting node as active")
 	nodeinfo.SetAlive()
 
 	var listenPort = ":" + cfg.ServerConfig.ListenPort
 	for name, item := range cfg.Listeners {
 		var section = "/" + name + "/"
-		log.Printf("Adding section listener: %s, to serve directory: %s", section, item.Directory)
+		log.Infof("Adding section listener: %s, to serve directory: %s", section, item.Directory)
 		http.Handle(section, http.StripPrefix(section, http.FileServer(http.Dir(item.Directory))))
 	}
-	log.Fatal(http.ListenAndServe(listenPort, nil))
+	log.Debug(http.ListenAndServe(listenPort, nil))
 }
 
 func init() {
@@ -35,13 +61,16 @@ func init() {
 		"Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
 	if _, err := os.Stat(ConfigFile); os.IsNotExist(err) {
-		log.Fatalf("Configuration file does not exist or cannot be loaded:\n (%s)", ConfigFile)
+		log.Criticalf("Configuration file does not exist or cannot be loaded:\n (%s)", ConfigFile)
 	} else {
 		utils.ReadConfigFromFile(ConfigFile)
 	}
-    cfg := utils.GetConfig()
-    flag.Set("log_dir", cfg.ServerConfig.LogLocation)
-    flag.Parse()
+	logger, err := log.LoggerFromConfigAsString(getLoggerConfig())
+
+	if err == nil {
+		log.ReplaceLogger(logger)
+	}
+
 }
 
 func main() {
@@ -49,7 +78,7 @@ func main() {
 	cfg := utils.GetConfig()
 	replicator.InitialSync()
 	for _, item := range cfg.Listeners {
-		utils.WriteLn("Working with: " + item.Directory)
+		log.Info("Working with: " + item.Directory)
 		go replicator.CheckIn(item.Directory)
 		go fswatcher.SysPathWatcher(item.Directory)
 	}

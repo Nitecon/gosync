@@ -8,7 +8,7 @@ import (
 	"os"
 	"path"
 	"time"
-    "log"
+    log "github.com/cihub/seelog"
 )
 
 type MySQLDB struct {
@@ -29,12 +29,12 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE path='%s' LIMIT 1", table, relFileName)
 	err := my.db.Select(&keyExists, query)
 	if err != nil {
-        log.Printf("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
+        log.Infof("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
 	}
     newChecksum := utils.GetMd5Checksum(item.Filename)
 
 	tx := my.db.MustBegin()
-    log.Printf("Existing items in DB: %d", len(keyExists))
+    log.Infof("Existing items in DB: %d", len(keyExists))
 	if len(keyExists) > 0 {
 		rowId := fmt.Sprintf("%d", keyExists[0].Id)
 		tx.MustExec("UPDATE "+table+" SET path=?, is_dir=?, filename=?, directory=?, checksum=?, atime=?, mtime=?, perms=?, host_updated=?, host_ips=?, last_update=? WHERE id='"+rowId+"'",
@@ -52,10 +52,10 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 		)
 		err = tx.Commit()
         if err != nil{
-            log.Printf("Error updating data in DB table %s, for file %s\n%s\n%+v", table, item.Filename, err.Error(),err)
+            log.Infof("Error updating data in DB table %s, for file %s\n%s\n%+v", table, item.Filename, err.Error(),err)
             return false
         }else{
-            log.Printf("Data updated in table %s for file %s", table, item.Filename)
+            log.Infof("Data updated in table %s for file %s", table, item.Filename)
             return true
         }
 	} else {
@@ -73,10 +73,10 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			time.Now().UTC())
 		err = tx.Commit()
         if err != nil{
-            log.Printf("Error inserting data to DB table %s, for file %s\n%s\n%+v", table, item.Filename, err.Error(),err)
+            log.Infof("Error inserting data to DB table %s, for file %s\n%s\n%+v", table, item.Filename, err.Error(),err)
             return false
         }else{
-            log.Printf("Data inserted to table %s for file %s", table, item.Filename)
+            log.Infof("Data inserted to table %s for file %s", table, item.Filename)
             return true
         }
 
@@ -91,7 +91,9 @@ func (my *MySQLDB) UpdateHost(table, path string){
     tx := my.db.MustBegin()
     tx.MustExec("UPDATE "+table+" SET host_updated=? WHERE path='"+path+"'", hostname )
     err := tx.Commit()
-    utils.Check(err, 500, "Error updating host for path : "+ path)
+    if err != nil{
+        log.Criticalf("Error updating host for path: %s", err.Error())
+    }
 }
 
 func (my *MySQLDB) CheckEmpty(table string) bool {
@@ -99,7 +101,9 @@ func (my *MySQLDB) CheckEmpty(table string) bool {
     defer my.db.Close()
 	var count int
 	err := my.db.Get(&count, "SELECT count(*) FROM "+table+";")
-	utils.ErrorCheckF(err, 500, "Error counting items in table (%s)", table)
+    if err != nil{
+        log.Criticalf("Error counting items in table (%s)", err.Error())
+    }
 
 	var isEmpty = true
 	if count > 0 {
@@ -114,7 +118,9 @@ func (my *MySQLDB) FetchAll(table string) []utils.DataTable {
 	dTable := []utils.DataTable{}
 	query := "SELECT path, is_dir, checksum, mtime, perms, host_updated, host_ips FROM " + table + " ORDER BY is_dir DESC"
 	err := my.db.Select(&dTable, query)
-    utils.ErrorCheckF(err, 500, "Could not fetch items from database for %s", table)
+    if err != nil{
+        log.Criticalf("Could not fetch items from database for %s\n%s", table, err.Error())
+    }
 	return dTable
 }
 
@@ -145,7 +151,7 @@ func (my *MySQLDB) PathExists(listener, path string) bool{
     query := fmt.Sprintf("SELECT path FROM %s where path='%s'", listener, path)
     err := my.db.Get(&dbItem, query)
     if err != nil{
-        log.Printf("Item does not exist in db or sql error: %s", err.Error())
+        log.Infof("Item does not exist in db or sql error: %s", err.Error())
         return false
     }
     if dbItem.Path == path{
@@ -160,12 +166,12 @@ func (my *MySQLDB) Remove(table, path string) bool{
     my.db = my.initDB()
     defer my.db.Close()
     query := fmt.Sprintf("DELETE FROM %s where path ='%s'", table, path)
-    log.Printf("Executing: %s", query)
+    log.Infof("Executing: %s", query)
     tx := my.db.MustBegin()
     tx.MustExec(query)
     err := tx.Commit()
     if err != nil{
-        log.Printf("Error occurrred removing %s:\n%s",path, err.Error())
+        log.Infof("Error occurrred removing %s:\n%s",path, err.Error())
         return false
     }
     return true
@@ -174,7 +180,7 @@ func (my *MySQLDB) Remove(table, path string) bool{
 func (my *MySQLDB) CreateDB() {
     my.db = my.initDB()
     defer my.db.Close()
-    utils.WriteLn("Database initialized")
+    log.Info("Database initialized")
 	for key, _ := range my.config.Listeners {
 		my.db.MustExec(createTableQuery(key))
 	}
@@ -184,7 +190,7 @@ func (my *MySQLDB) CreateDB() {
 func (my *MySQLDB) initDB() *sqlx.DB{
 	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
 	if err != nil {
-        utils.WriteLn(err.Error())
+        log.Info(err.Error())
 	}
 	return tempdb
 }

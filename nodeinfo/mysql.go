@@ -7,6 +7,7 @@ import (
 	"gosync/utils"
 	"time"
     "os"
+    log "github.com/cihub/seelog"
 )
 
 var (
@@ -31,7 +32,9 @@ func (my *MySQLNodeDB) Insert() bool {
     time.Now().UTC(),
     time.Now().UTC()    )
 	err := tx.Commit()
-	utils.Check(err, 500, "Error setting node alive...")
+    if err != nil{
+        log.Criticalf("Error setting node alive: %s", err.Error())
+    }
 	return true
 }
 
@@ -41,7 +44,10 @@ func (my *MySQLNodeDB) GetAll() ([]utils.NodeTable) {
     hostname, _ := os.Hostname()
     query := "select id, hostname, host_ips, connected_on, last_update from "+table+" where hostname != '"+hostname+"' ORDER BY last_update DESC;"
     err := my.db.Select(&nData, query)
-    utils.ErrorCheckF(err, 500, "Could not fetch nodes from database on table %s, for hostname: %s", table, hostname)
+    if err != nil{
+        log.Criticalf("Could not fetch nodes from database on table %s, for hostname: %s", err.Error())
+    }
+
 	return nData
 }
 
@@ -54,7 +60,9 @@ func (my *MySQLNodeDB) Update() bool {
     time.Now().UTC(),
     utils.GetSystemHostname())
     err := tx.Commit()
-    utils.Check(err, 500, "Error updating node alive...")
+    if err != nil{
+        log.Errorf("Error updating node alive status: %s", err.Error())
+    }
     return true
 }
 
@@ -65,14 +73,16 @@ func (my *MySQLNodeDB) Close(deadHost string) {
     tx.MustExec("DELETE FROM "+table+" where hostname='?'" ,
     deadHost)
     err := tx.Commit()
-    utils.Check(err, 500, "Error updating node alive...")
+    if err != nil{
+        log.Errorf("Error updating node alive status for dead host: %s", err.Error())
+    }
 }
 
 
 func (my *MySQLNodeDB) initDB() {
 	tempdb, err := sqlx.Connect("mysql", my.config.Database.Dsn+"&parseTime=True")
 	if err != nil {
-		utils.WriteLn(err.Error())
+		log.Info(err.Error())
 	}
 	my.db = tempdb
 

@@ -7,6 +7,7 @@ import (
     "sync"
     "strings"
 
+    log "github.com/cihub/seelog"
 )
 
 var (
@@ -38,9 +39,9 @@ func GetConfig() *Configuration {
 func GetLocalIp() string {
     addrs, err := net.InterfaceAddrs()
     if err != nil {
-        ErrorCheckF(err, 500, "No network interfaces found")
+        log.Criticalf("No network interfaces found, %s", err.Error())
     }
-    //log.Printf("Addresses: %+v", addrs)
+    //log.Infof("Addresses: %+v", addrs)
     var ips []string
     for _, a := range addrs {
         if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
