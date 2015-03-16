@@ -73,7 +73,7 @@ type BaseConfig struct {
 	RescanTime  int    `toml:"rescan"`
 	StorageType string `toml:"storagetype"`
 	LogLocation string `toml:"log_location"`
-	LogLevel    int    `toml:"log_level"`
+	LogLevel    string    `toml:"log_level"`
 }
 
 type Listener struct {

@@ -25,7 +25,9 @@ func getLoggerConfig() string {
         }
 		loggerConfig = `<seelog type="asynctimer" asyncinterval="1000">
     <outputs formatid="main">
-        <file path="` + cfg.ServerConfig.LogLocation + `" />
+        <filter levels="`+cfg.ServerConfig.LogLevel+`">
+          <file path="` + cfg.ServerConfig.LogLocation + `" />
+        </filter>
     </outputs>
     <formats>
         <format id="main" format="%Date %Time [%LEVEL] %Msg%n"/>
