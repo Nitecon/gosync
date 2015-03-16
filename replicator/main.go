@@ -2,13 +2,13 @@ package replicator
 
 import (
 	"fmt"
+	log "github.com/cihub/seelog"
 	"gosync/datastore"
 	"gosync/nodeinfo"
 	"gosync/storage"
 	"gosync/utils"
 	"os"
 	"time"
-    log "github.com/cihub/seelog"
 )
 
 func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
@@ -22,11 +22,12 @@ func getFileInDatabase(dbPath string, fsItems []utils.FsItem) bool {
 
 func InitialSync() {
 	cfg := utils.GetConfig()
-    log.Info("Verifying DB Tables")
+	log.Info("Verifying DB Tables")
 	datastore.CreateDB()
-    log.Info("Initial sync starting...")
+	log.Info("Initial sync starting...")
 
 	for key, listener := range cfg.Listeners {
+
 		// First check to see if the table is empty and do a full import false == not empty
 		if datastore.CheckEmpty(key) == false {
 			// Database is not empty so pull the updates and match locally
@@ -84,12 +85,14 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 	itemsToDelete := findOnlyInFS(fsItems, items, listenerName)
 	if len(itemsToDelete) > 0 {
 		for _, delItem := range itemsToDelete {
-			itemExists := datastore.PathExists(listenerName, delItem)
-			if !itemExists {
-				log.Infof("Removing untracked item: %s", delItem)
-				err := os.Remove(delItem)
-				if err != nil {
-					log.Infof("Error deleting untracked file %s\n%s", delItem, err.Error())
+			if !utils.MatchesIgnore(listener.Directory, delItem) {
+				itemExists := datastore.PathExists(listenerName, delItem)
+				if !itemExists {
+					log.Infof("Removing untracked item: %s", delItem)
+					err := os.Remove(delItem)
+					if err != nil {
+						log.Infof("Error deleting untracked file %s\n%s", delItem, err.Error())
+					}
 				}
 			}
 
@@ -142,18 +145,20 @@ func handleDataChanges(items []utils.DataTable, listener utils.Listener, listene
 			// Now we check to make sure the files match correct users etc
 
 		} else {
-			// Item doesn't exist locally but exists in DB so restore it
-			log.Infof("Item Deleted Locally: %s restoring from DB marker", absPath)
-			if item.IsDirectory {
-				dirExists, _ := utils.ItemExists(absPath)
-				if !dirExists {
-					os.MkdirAll(absPath, 0775)
-				}
-			} else {
-				if !storage.GetNodeCopy(item, listenerName, listener.Uid, listener.Gid, perms) {
-					log.Infof("Server is down for %s going to backup storage", listenerName)
-					// The server must be down so lets get it from S3
-					storage.GetFile(absPath, listenerName, listener.Uid, listener.Gid, perms)
+			if !utils.MatchesIgnore(listener.Directory, absPath) {
+				// Item doesn't exist locally but exists in DB so restore it
+				log.Infof("Item Deleted Locally: %s restoring from DB marker", absPath)
+				if item.IsDirectory {
+					dirExists, _ := utils.ItemExists(absPath)
+					if !dirExists {
+						os.MkdirAll(absPath, 0775)
+					}
+				} else {
+					if !storage.GetNodeCopy(item, listenerName, listener.Uid, listener.Gid, perms) {
+						log.Infof("Server is down for %s going to backup storage", listenerName)
+						// The server must be down so lets get it from S3
+						storage.GetFile(absPath, listenerName, listener.Uid, listener.Gid, perms)
+					}
 				}
 			}
 

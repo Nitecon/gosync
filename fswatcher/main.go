@@ -26,24 +26,37 @@ func SysPathWatcher(path string) {
 			case event := <-watcher.Events:
 				//logs.WriteLn("event:", event)
 				if event.Op&fsnotify.Chmod == fsnotify.Chmod {
-					runFileChmod(path, event.Name)
+                    if !utils.MatchesIgnore(path, event.Name){
+                        runFileChmod(path, event.Name)
+                    }
 				}
 				if event.Op&fsnotify.Rename == fsnotify.Rename {
-					log.Infof("Rename occurred on:", event.Name)
-					if checksumItem(path, rel_path, event.Name) {
-						runFileRename(path, event.Name)
-					}
+
+                    if !utils.MatchesIgnore(path, event.Name){
+                        if checksumItem(path, rel_path, event.Name) {
+                            log.Infof("Rename occurred on:", event.Name)
+                            runFileRename(path, event.Name)
+                        }
+                    }
+
 				}
 				if (event.Op&fsnotify.Create == fsnotify.Create) || (event.Op&fsnotify.Write == fsnotify.Write) {
-					log.Infof("New / Modified File: %s", event.Name)
+
 					if checksumItem(path, rel_path, event.Name) {
-						runFileCreateUpdate(path, event.Name, "create")
+                        if !utils.MatchesIgnore(path, event.Name){
+                            log.Infof("New / Modified File: %s", event.Name)
+                            runFileCreateUpdate(path, event.Name, "create")
+                        }
+
 					}
 				}
 
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
-					runFileRemove(path, event.Name)
-					log.Infof("Removed File: %s", event.Name)
+                    if !utils.MatchesIgnore(path, event.Name){
+                        runFileRemove(path, event.Name)
+                        log.Infof("Removed File: %s", event.Name)
+                    }
+
 				}
 			case err := <-watcher.Errors:
 				log.Errorf("error:", err)
