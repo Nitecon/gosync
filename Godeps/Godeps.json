@@ -1,5 +1,5 @@
 {
-	"ImportPath": "gosync",
+	"ImportPath": "github.com/Nitecon/gosync",
 	"GoVersion": "go1.3",
 	"Deps": [
 		{

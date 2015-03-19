@@ -2,8 +2,8 @@ package storage
 
 import (
 	"net/http"
-    "gosync/utils"
-    "gosync/nodeinfo"
+    "github.com/Nitecon/gosync/utils"
+    "github.com/Nitecon/gosync/nodeinfo"
     "strings"
     "time"
     log "github.com/cihub/seelog"

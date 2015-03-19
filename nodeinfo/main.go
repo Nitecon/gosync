@@ -1,7 +1,7 @@
 package nodeinfo
 
 import (
-    "gosync/utils"
+    "github.com/Nitecon/gosync/utils"
 )
 
 var (

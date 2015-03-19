@@ -2,7 +2,7 @@ package storage
 
 import (
 
-    "gosync/utils"
+    "github.com/Nitecon/gosync/utils"
     log "github.com/cihub/seelog"
 
 )

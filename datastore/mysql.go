@@ -4,7 +4,7 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"gosync/utils"
+	"github.com/Nitecon/gosync/utils"
 	"os"
 	"path"
 	"time"

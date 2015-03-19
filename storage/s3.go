@@ -2,10 +2,10 @@ package storage
 
 import (
 	"github.com/rlmcpherson/s3gof3r"
-    "gosync/utils"
+    "github.com/Nitecon/gosync/utils"
 	"os"
     "io"
-    "gosync/datastore"
+    "github.com/Nitecon/gosync/datastore"
     "strings"
     log "github.com/cihub/seelog"
 )

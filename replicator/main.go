@@ -3,10 +3,10 @@ package replicator
 import (
 	"fmt"
 	log "github.com/cihub/seelog"
-	"gosync/datastore"
-	"gosync/nodeinfo"
-	"gosync/storage"
-	"gosync/utils"
+	"github.com/Nitecon/gosync/datastore"
+	"github.com/Nitecon/gosync/nodeinfo"
+	"github.com/Nitecon/gosync/storage"
+	"github.com/Nitecon/gosync/utils"
 	"os"
 	"time"
 )

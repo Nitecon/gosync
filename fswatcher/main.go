@@ -3,9 +3,9 @@ package fswatcher
 import (
 	log "github.com/cihub/seelog"
 	"gopkg.in/fsnotify.v1"
-	"gosync/datastore"
-	"gosync/storage"
-	"gosync/utils"
+	"github.com/Nitecon/gosync/datastore"
+	"github.com/Nitecon/gosync/storage"
+	"github.com/Nitecon/gosync/utils"
 	"os"
 	"strconv"
 )
