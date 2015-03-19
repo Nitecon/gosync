@@ -9,5 +9,5 @@ import (
 
 func TestGosync(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gosync Suite")
+	RunSpecs(t, "Gosync Suite!")
 }
