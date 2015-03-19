@@ -63,7 +63,7 @@ func StartWebFileServer(cfg *utils.Configuration) {
 
 func init() {
 	var ConfigFile string
-	flag.StringVar(&ConfigFile, "config", "/etc/gosync/config.cfg",
+	flag.StringVar(&ConfigFile, "config", "config.cfg.example",
 		"Please provide the path to the config file, defaults to: /etc/gosync/config.cfg")
 	flag.Parse()
 	if _, err := os.Stat(ConfigFile); os.IsNotExist(err) {
