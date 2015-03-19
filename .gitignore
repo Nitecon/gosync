@@ -18,6 +18,5 @@ _testmain.go
 *.test
 *.prof
 .DS_Store
-.idea/
+.idea
 gosync.iml
-main
