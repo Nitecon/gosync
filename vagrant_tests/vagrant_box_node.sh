@@ -16,6 +16,7 @@ if [ ! -f /etc/profile.d/gosync.sh ]; then
     sudo mv -f motd /etc/motd
 fi
 
-sudo mkdir /data/storage/
+sudo mkdir /data/storage
 
+#TODO: Add crons to modify /data/storage to validate file changes
 
