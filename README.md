@@ -1,4 +1,7 @@
 # GoSync
+
+[![Build Status](https://drone.io/github.com/Nitecon/gosync/status.png)](https://drone.io/github.com/Nitecon/gosync/latest)
+
 GoSync is a simple filesystem and directory replication system that uses a database for it's backend to track changes.
 It was built out of necessity to auto scale web based properties where the sites were built as single server sites.
 
