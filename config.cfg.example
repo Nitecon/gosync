@@ -26,35 +26,29 @@ region=""
 [Database]
 type = "mysql"
 # DSN Takes the following form:
-dsn = "dbusername:dbpassword@tcp(localhost:3306)/databasename?autocommit=true"
+dsn = "test:testing@tcp(10.0.1.105:3306)/gosync?autocommit=true"
 
 # The UID and GID for each directory enforces the files in that directory to be owned by that particular user
 # That allows for mismatched UID / GIDs between servers
 
 [listeners]
+    # The [listeners.<IDENTIFIER>] is important as it is the alias for the directory you are backing up
+    # this identifier should match on your other hosts and should not include special chars including spaces.
+    # The identifier is also used as the table name in the database during initial creation
+
 	[listeners.MonitorMe1]
 	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
-    basepath="/fssync/MonitorMe1"
-    # Excludes are a comma seperated list of files or directories to be excluded
-    # Example ".git/,vendor/somefile/blah.txt"
-    excludes = ""
+    basepath="/gosync/monitorMe"
+
+    # To exclude files from being tracked edit the .goignore file in the base directory
+
     #UID / GID below is what the files should be owned as when synced
 	uid = 504
   	gid = 504
-  	directory = "/data/directory/to/monitor"
+  	directory = "/data/storage"
 	storagetype="s3"
 	bucket="fssync"
 
+    # For additional Listeners:
+    # Just duplicate the Listener block above for additional sync directories and update as required
 
-	[listeners.Bootstrapped]
-	#Basepath is used if you are using only 1 bucket to seperate all downloads into different base subdirectories
-    basepath="/fssync/Bootstrapped"
-    # Excludes are a comma seperated list of files or directories to be excluded
-    # Example ".git/,vendor/somefile/blah.txt"
-    excludes = ""
-    #UID / GID below is what the files should be owned as when synced
-	uid = 504
-  	gid = 504
-  	directory = "/data/directory/to/monitorthistoo"
-  	storage="s3"
-	bucket="fssync"

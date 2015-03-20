@@ -9,6 +9,8 @@ import (
 	"path"
 	"time"
     log "github.com/cihub/seelog"
+
+    "html"
 )
 
 type MySQLDB struct {
@@ -26,10 +28,11 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	hostname, _ := os.Hostname()
 	var keyExists = []utils.DataTable{}
     relFileName := string(utils.GetRelativePath(table, item.Filename))
-	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE path='%s' LIMIT 1", table, relFileName)
+    escapedPath := html.EscapeString(relFileName)
+	var query = fmt.Sprintf("SELECT id, path FROM %s WHERE path='%s' LIMIT 1", table, escapedPath)
 	err := my.db.Select(&keyExists, query)
 	if err != nil {
-        log.Infof("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, item.Filename), table, err)
+        log.Infof("Error checking for existence of key: %s, in table %s\n %+v", utils.GetRelativePath(table, escapedPath), table, err)
 	}
     newChecksum := utils.GetMd5Checksum(item.Filename)
 
@@ -38,7 +41,7 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 	if len(keyExists) > 0 {
 		rowId := fmt.Sprintf("%d", keyExists[0].Id)
 		tx.MustExec("UPDATE "+table+" SET path=?, is_dir=?, filename=?, directory=?, checksum=?, atime=?, mtime=?, perms=?, host_updated=?, host_ips=?, last_update=? WHERE id='"+rowId+"'",
-			utils.GetRelativePath(table, item.Filename),
+			utils.GetRelativePath(table, escapedPath),
 			isDirectory,
 			path.Base(item.Filename),
 			path.Dir(item.Filename),
@@ -52,15 +55,15 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 		)
 		err = tx.Commit()
         if err != nil{
-            log.Infof("Error updating data in DB table %s, for file %s\n%s\n%+v", table, item.Filename, err.Error(),err)
+            log.Infof("Error updating data in DB table %s, for file %s\n%s\n%+v", table, escapedPath, err.Error(),err)
             return false
         }else{
-            log.Infof("Data updated in table %s for file %s", table, item.Filename)
+            log.Infof("Data updated in table %s for file %s", table, escapedPath)
             return true
         }
 	} else {
 		tx.MustExec("INSERT INTO "+table+" (path, is_dir, filename, directory, checksum, atime, mtime, perms, host_updated, host_ips, last_update) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-			utils.GetRelativePath(table, item.Filename),
+			utils.GetRelativePath(table, escapedPath),
 			isDirectory,
 			path.Base(item.Filename),
 			path.Dir(item.Filename),
@@ -73,10 +76,10 @@ func (my *MySQLDB) Insert(table string, item utils.FsItem) bool {
 			time.Now().UTC())
 		err = tx.Commit()
         if err != nil{
-            log.Infof("Error inserting data to DB table %s, for file %s\n%s\n%+v", table, item.Filename, err.Error(),err)
+            log.Infof("Error inserting data to DB table %s, for file %s\n%s\n%+v", table, escapedPath, err.Error(),err)
             return false
         }else{
-            log.Infof("Data inserted to table %s for file %s", table, item.Filename)
+            log.Infof("Data inserted to table %s for file %s", table, escapedPath)
             return true
         }
 
