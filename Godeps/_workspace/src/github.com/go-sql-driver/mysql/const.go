@@ -11,7 +11,7 @@ package mysql
 const (
 	minProtocolVersion byte = 10
 	maxPacketSize           = 1<<24 - 1
-	timeFormat              = "2006-01-02 15:04:05"
+	timeFormat              = "2006-01-02 15:04:05.999999"
 )
 
 // MySQL constants documentation:
@@ -68,7 +68,7 @@ const (
 	comBinlogDump
 	comTableDump
 	comConnectOut
-	comRegiserSlave
+	comRegisterSlave
 	comStmtPrepare
 	comStmtExecute
 	comStmtSendLongData
@@ -129,4 +129,26 @@ const (
 	flagUnknown2
 	flagUnknown3
 	flagUnknown4
+)
+
+// http://dev.mysql.com/doc/internals/en/status-flags.html
+
+type statusFlag uint16
+
+const (
+	statusInTrans statusFlag = 1 << iota
+	statusInAutocommit
+	statusReserved // Not in documentation
+	statusMoreResultsExists
+	statusNoGoodIndexUsed
+	statusNoIndexUsed
+	statusCursorExists
+	statusLastRowSent
+	statusDbDropped
+	statusNoBackslashEscapes
+	statusMetadataChanged
+	statusQueryWasSlow
+	statusPsOutParams
+	statusInTransReadonly
+	statusSessionStateChanged
 )

@@ -16,6 +16,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/url"
 	"strings"
 	"time"
@@ -24,9 +25,10 @@ import (
 var (
 	tlsConfigRegister map[string]*tls.Config // Register for custom tls.Configs
 
-	errInvalidDSNUnescaped = errors.New("Invalid DSN: Did you forget to escape a param value?")
-	errInvalidDSNAddr      = errors.New("Invalid DSN: Network Address not terminated (missing closing brace)")
-	errInvalidDSNNoSlash   = errors.New("Invalid DSN: Missing the slash separating the database name")
+	errInvalidDSNUnescaped       = errors.New("Invalid DSN: Did you forget to escape a param value?")
+	errInvalidDSNAddr            = errors.New("Invalid DSN: Network Address not terminated (missing closing brace)")
+	errInvalidDSNNoSlash         = errors.New("Invalid DSN: Missing the slash separating the database name")
+	errInvalidDSNUnsafeCollation = errors.New("Invalid DSN: interpolateParams can be used with ascii, latin1, utf8 and utf8mb4 charset")
 )
 
 func init() {
@@ -146,6 +148,10 @@ func parseDSN(dsn string) (cfg *config, err error) {
 		return nil, errInvalidDSNNoSlash
 	}
 
+	if cfg.interpolateParams && unsafeCollations[cfg.collation] {
+		return nil, errInvalidDSNUnsafeCollation
+	}
+
 	// Set default network if empty
 	if cfg.net == "" {
 		cfg.net = "tcp"
@@ -178,6 +184,14 @@ func parseDSNParams(cfg *config, params string) (err error) {
 
 		// cfg params
 		switch value := param[1]; param[0] {
+
+		// Enable client side placeholder substitution
+		case "interpolateParams":
+			var isBool bool
+			cfg.interpolateParams, isBool = readBool(value)
+			if !isBool {
+				return fmt.Errorf("Invalid Bool value: %s", value)
+			}
 
 		// Disable INFILE whitelist / enable all files
 		case "allowAllFiles":
@@ -216,6 +230,13 @@ func parseDSNParams(cfg *config, params string) (err error) {
 			cfg.collation = collation
 			break
 
+		case "columnsWithAlias":
+			var isBool bool
+			cfg.columnsWithAlias, isBool = readBool(value)
+			if !isBool {
+				return fmt.Errorf("Invalid Bool value: %s", value)
+			}
+
 		// Time Location
 		case "loc":
 			if value, err = url.QueryUnescape(value); err != nil {
@@ -244,6 +265,13 @@ func parseDSNParams(cfg *config, params string) (err error) {
 				if strings.ToLower(value) == "skip-verify" {
 					cfg.tls = &tls.Config{InsecureSkipVerify: true}
 				} else if tlsConfig, ok := tlsConfigRegister[value]; ok {
+					if len(tlsConfig.ServerName) == 0 && !tlsConfig.InsecureSkipVerify {
+						host, _, err := net.SplitHostPort(cfg.addr)
+						if err == nil {
+							tlsConfig.ServerName = host
+						}
+					}
+
 					cfg.tls = tlsConfig
 				} else {
 					return fmt.Errorf("Invalid value / unknown config name: %s", value)
@@ -451,17 +479,13 @@ func (nt NullTime) Value() (driver.Value, error) {
 }
 
 func parseDateTime(str string, loc *time.Location) (t time.Time, err error) {
+	base := "0000-00-00 00:00:00.0000000"
 	switch len(str) {
-	case 10: // YYYY-MM-DD
-		if str == "0000-00-00" {
+	case 10, 19, 21, 22, 23, 24, 25, 26: // up to "YYYY-MM-DD HH:MM:SS.MMMMMM"
+		if str == base[:len(str)] {
 			return
 		}
-		t, err = time.Parse(timeFormat[:10], str)
-	case 19: // YYYY-MM-DD HH:MM:SS
-		if str == "0000-00-00 00:00:00" {
-			return
-		}
-		t, err = time.Parse(timeFormat, str)
+		t, err = time.Parse(timeFormat[:len(str)], str)
 	default:
 		err = fmt.Errorf("Invalid Time-String: %s", str)
 		return
@@ -519,80 +543,144 @@ func parseBinaryDateTime(num uint64, data []byte, loc *time.Location) (driver.Va
 // if the DATE or DATETIME has the zero value.
 // It must never be changed.
 // The current behavior depends on database/sql copying the result.
-var zeroDateTime = []byte("0000-00-00 00:00:00")
+var zeroDateTime = []byte("0000-00-00 00:00:00.000000")
 
-func formatBinaryDateTime(src []byte, withTime bool) (driver.Value, error) {
+const digits01 = "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
+const digits10 = "0000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999"
+
+func formatBinaryDateTime(src []byte, length uint8, justTime bool) (driver.Value, error) {
+	// length expects the deterministic length of the zero value,
+	// negative time and 100+ hours are automatically added if needed
 	if len(src) == 0 {
-		if withTime {
-			return zeroDateTime, nil
+		if justTime {
+			return zeroDateTime[11 : 11+length], nil
 		}
-		return zeroDateTime[:10], nil
+		return zeroDateTime[:length], nil
 	}
-	var dst []byte
-	if withTime {
-		if len(src) == 11 {
-			dst = []byte("0000-00-00 00:00:00.000000")
+	var dst []byte          // return value
+	var pt, p1, p2, p3 byte // current digit pair
+	var zOffs byte          // offset of value in zeroDateTime
+	if justTime {
+		switch length {
+		case
+			8,                      // time (can be up to 10 when negative and 100+ hours)
+			10, 11, 12, 13, 14, 15: // time with fractional seconds
+		default:
+			return nil, fmt.Errorf("illegal TIME length %d", length)
+		}
+		switch len(src) {
+		case 8, 12:
+		default:
+			return nil, fmt.Errorf("Invalid TIME-packet length %d", len(src))
+		}
+		// +2 to enable negative time and 100+ hours
+		dst = make([]byte, 0, length+2)
+		if src[0] == 1 {
+			dst = append(dst, '-')
+		}
+		if src[1] != 0 {
+			hour := uint16(src[1])*24 + uint16(src[5])
+			pt = byte(hour / 100)
+			p1 = byte(hour - 100*uint16(pt))
+			dst = append(dst, digits01[pt])
 		} else {
-			dst = []byte("0000-00-00 00:00:00")
+			p1 = src[5]
 		}
+		zOffs = 11
+		src = src[6:]
 	} else {
-		dst = []byte("0000-00-00")
-	}
-	switch len(src) {
-	case 11:
-		microsecs := binary.LittleEndian.Uint32(src[7:11])
-		tmp32 := microsecs / 10
-		dst[25] += byte(microsecs - 10*tmp32)
-		tmp32, microsecs = tmp32/10, tmp32
-		dst[24] += byte(microsecs - 10*tmp32)
-		tmp32, microsecs = tmp32/10, tmp32
-		dst[23] += byte(microsecs - 10*tmp32)
-		tmp32, microsecs = tmp32/10, tmp32
-		dst[22] += byte(microsecs - 10*tmp32)
-		tmp32, microsecs = tmp32/10, tmp32
-		dst[21] += byte(microsecs - 10*tmp32)
-		dst[20] += byte(microsecs / 10)
-		fallthrough
-	case 7:
-		second := src[6]
-		tmp := second / 10
-		dst[18] += second - 10*tmp
-		dst[17] += tmp
-		minute := src[5]
-		tmp = minute / 10
-		dst[15] += minute - 10*tmp
-		dst[14] += tmp
-		hour := src[4]
-		tmp = hour / 10
-		dst[12] += hour - 10*tmp
-		dst[11] += tmp
-		fallthrough
-	case 4:
-		day := src[3]
-		tmp := day / 10
-		dst[9] += day - 10*tmp
-		dst[8] += tmp
-		month := src[2]
-		tmp = month / 10
-		dst[6] += month - 10*tmp
-		dst[5] += tmp
+		switch length {
+		case 10, 19, 21, 22, 23, 24, 25, 26:
+		default:
+			t := "DATE"
+			if length > 10 {
+				t += "TIME"
+			}
+			return nil, fmt.Errorf("illegal %s length %d", t, length)
+		}
+		switch len(src) {
+		case 4, 7, 11:
+		default:
+			t := "DATE"
+			if length > 10 {
+				t += "TIME"
+			}
+			return nil, fmt.Errorf("illegal %s-packet length %d", t, len(src))
+		}
+		dst = make([]byte, 0, length)
+		// start with the date
 		year := binary.LittleEndian.Uint16(src[:2])
-		tmp16 := year / 10
-		dst[3] += byte(year - 10*tmp16)
-		tmp16, year = tmp16/10, tmp16
-		dst[2] += byte(year - 10*tmp16)
-		tmp16, year = tmp16/10, tmp16
-		dst[1] += byte(year - 10*tmp16)
-		dst[0] += byte(tmp16)
+		pt = byte(year / 100)
+		p1 = byte(year - 100*uint16(pt))
+		p2, p3 = src[2], src[3]
+		dst = append(dst,
+			digits10[pt], digits01[pt],
+			digits10[p1], digits01[p1], '-',
+			digits10[p2], digits01[p2], '-',
+			digits10[p3], digits01[p3],
+		)
+		if length == 10 {
+			return dst, nil
+		}
+		if len(src) == 4 {
+			return append(dst, zeroDateTime[10:length]...), nil
+		}
+		dst = append(dst, ' ')
+		p1 = src[4] // hour
+		src = src[5:]
+	}
+	// p1 is 2-digit hour, src is after hour
+	p2, p3 = src[0], src[1]
+	dst = append(dst,
+		digits10[p1], digits01[p1], ':',
+		digits10[p2], digits01[p2], ':',
+		digits10[p3], digits01[p3],
+	)
+	if length <= byte(len(dst)) {
 		return dst, nil
 	}
-	var t string
-	if withTime {
-		t = "DATETIME"
-	} else {
-		t = "DATE"
+	src = src[2:]
+	if len(src) == 0 {
+		return append(dst, zeroDateTime[19:zOffs+length]...), nil
 	}
-	return nil, fmt.Errorf("invalid %s-packet length %d", t, len(src))
+	microsecs := binary.LittleEndian.Uint32(src[:4])
+	p1 = byte(microsecs / 10000)
+	microsecs -= 10000 * uint32(p1)
+	p2 = byte(microsecs / 100)
+	microsecs -= 100 * uint32(p2)
+	p3 = byte(microsecs)
+	switch decimals := zOffs + length - 20; decimals {
+	default:
+		return append(dst, '.',
+			digits10[p1], digits01[p1],
+			digits10[p2], digits01[p2],
+			digits10[p3], digits01[p3],
+		), nil
+	case 1:
+		return append(dst, '.',
+			digits10[p1],
+		), nil
+	case 2:
+		return append(dst, '.',
+			digits10[p1], digits01[p1],
+		), nil
+	case 3:
+		return append(dst, '.',
+			digits10[p1], digits01[p1],
+			digits10[p2],
+		), nil
+	case 4:
+		return append(dst, '.',
+			digits10[p1], digits01[p1],
+			digits10[p2], digits01[p2],
+		), nil
+	case 5:
+		return append(dst, '.',
+			digits10[p1], digits01[p1],
+			digits10[p2], digits01[p2],
+			digits10[p3],
+		), nil
+	}
 }
 
 /******************************************************************************
@@ -723,4 +811,153 @@ func appendLengthEncodedInteger(b []byte, n uint64) []byte {
 	}
 	return append(b, 0xfe, byte(n), byte(n>>8), byte(n>>16), byte(n>>24),
 		byte(n>>32), byte(n>>40), byte(n>>48), byte(n>>56))
+}
+
+// reserveBuffer checks cap(buf) and expand buffer to len(buf) + appendSize.
+// If cap(buf) is not enough, reallocate new buffer.
+func reserveBuffer(buf []byte, appendSize int) []byte {
+	newSize := len(buf) + appendSize
+	if cap(buf) < newSize {
+		// Grow buffer exponentially
+		newBuf := make([]byte, len(buf)*2+appendSize)
+		copy(newBuf, buf)
+		buf = newBuf
+	}
+	return buf[:newSize]
+}
+
+// escapeBytesBackslash escapes []byte with backslashes (\)
+// This escapes the contents of a string (provided as []byte) by adding backslashes before special
+// characters, and turning others into specific escape sequences, such as
+// turning newlines into \n and null bytes into \0.
+// https://github.com/mysql/mysql-server/blob/mysql-5.7.5/mysys/charset.c#L823-L932
+func escapeBytesBackslash(buf, v []byte) []byte {
+	pos := len(buf)
+	buf = reserveBuffer(buf, len(v)*2)
+
+	for _, c := range v {
+		switch c {
+		case '\x00':
+			buf[pos] = '\\'
+			buf[pos+1] = '0'
+			pos += 2
+		case '\n':
+			buf[pos] = '\\'
+			buf[pos+1] = 'n'
+			pos += 2
+		case '\r':
+			buf[pos] = '\\'
+			buf[pos+1] = 'r'
+			pos += 2
+		case '\x1a':
+			buf[pos] = '\\'
+			buf[pos+1] = 'Z'
+			pos += 2
+		case '\'':
+			buf[pos] = '\\'
+			buf[pos+1] = '\''
+			pos += 2
+		case '"':
+			buf[pos] = '\\'
+			buf[pos+1] = '"'
+			pos += 2
+		case '\\':
+			buf[pos] = '\\'
+			buf[pos+1] = '\\'
+			pos += 2
+		default:
+			buf[pos] = c
+			pos += 1
+		}
+	}
+
+	return buf[:pos]
+}
+
+// escapeStringBackslash is similar to escapeBytesBackslash but for string.
+func escapeStringBackslash(buf []byte, v string) []byte {
+	pos := len(buf)
+	buf = reserveBuffer(buf, len(v)*2)
+
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		switch c {
+		case '\x00':
+			buf[pos] = '\\'
+			buf[pos+1] = '0'
+			pos += 2
+		case '\n':
+			buf[pos] = '\\'
+			buf[pos+1] = 'n'
+			pos += 2
+		case '\r':
+			buf[pos] = '\\'
+			buf[pos+1] = 'r'
+			pos += 2
+		case '\x1a':
+			buf[pos] = '\\'
+			buf[pos+1] = 'Z'
+			pos += 2
+		case '\'':
+			buf[pos] = '\\'
+			buf[pos+1] = '\''
+			pos += 2
+		case '"':
+			buf[pos] = '\\'
+			buf[pos+1] = '"'
+			pos += 2
+		case '\\':
+			buf[pos] = '\\'
+			buf[pos+1] = '\\'
+			pos += 2
+		default:
+			buf[pos] = c
+			pos += 1
+		}
+	}
+
+	return buf[:pos]
+}
+
+// escapeBytesQuotes escapes apostrophes in []byte by doubling them up.
+// This escapes the contents of a string by doubling up any apostrophes that
+// it contains. This is used when the NO_BACKSLASH_ESCAPES SQL_MODE is in
+// effect on the server.
+// https://github.com/mysql/mysql-server/blob/mysql-5.7.5/mysys/charset.c#L963-L1038
+func escapeBytesQuotes(buf, v []byte) []byte {
+	pos := len(buf)
+	buf = reserveBuffer(buf, len(v)*2)
+
+	for _, c := range v {
+		if c == '\'' {
+			buf[pos] = '\''
+			buf[pos+1] = '\''
+			pos += 2
+		} else {
+			buf[pos] = c
+			pos++
+		}
+	}
+
+	return buf[:pos]
+}
+
+// escapeStringQuotes is similar to escapeBytesQuotes but for string.
+func escapeStringQuotes(buf []byte, v string) []byte {
+	pos := len(buf)
+	buf = reserveBuffer(buf, len(v)*2)
+
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if c == '\'' {
+			buf[pos] = '\''
+			buf[pos+1] = '\''
+			pos += 2
+		} else {
+			buf[pos] = c
+			pos++
+		}
+	}
+
+	return buf[:pos]
 }

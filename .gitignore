@@ -21,3 +21,4 @@ _testmain.go
 .DS_Store
 .idea
 gosync.iml
+atlassian-ide-plugin.xml

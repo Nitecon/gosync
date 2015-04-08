@@ -6,27 +6,26 @@ rescan = 30
 # The filesystem storage to be used
 storagetype="s3"
 # The location for the log file (can be stdout or a path to file)
-#log_location="stdout"
-log_location="/var/log/gosync/gosync.log"
+log_location="stdout"
+#log_location="/var/log/gosync/gosync.log"
 
 # Log levels are (debug, info, warning,error, critical)
 # The lower the log level the more information is printed (debug provides the most output)
 log_level="debug"
 
-[StorageS3]
-key=""
-secret=""
-region=""
-
-[StorageGDrive]
+[RemoteStorage]
 key=""
 secret=""
 region=""
 
 [Database]
 type = "mysql"
-# DSN Takes the following form:
-dsn = "test:testing@tcp(10.0.1.105:3306)/gosync?autocommit=true"
+user = "test"
+pass = "testing"
+host = "10.0.1.105"
+port = "3306"
+dbase = "gosync"
+
 
 # The UID and GID for each directory enforces the files in that directory to be owned by that particular user
 # That allows for mismatched UID / GIDs between servers
@@ -46,7 +45,6 @@ dsn = "test:testing@tcp(10.0.1.105:3306)/gosync?autocommit=true"
 	uid = 504
   	gid = 504
   	directory = "/data/storage"
-	storagetype="s3"
 	bucket="fssync"
 
     # For additional Listeners:
